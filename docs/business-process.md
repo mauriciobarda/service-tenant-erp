@@ -12,7 +12,9 @@ The foundational lifecycle of a business engagement, mapping how client demands 
 - **Pre-Conditions:** A `Client` profile exists in the system directory.
 - **Success State:** The project is completed, an invoice is generated, and the financial dashboard is updated.
 
-### Process Flow
+### Core Lifecycle and Dynamic Operations
+
+**Note on Operation Order:** While the list below represents the foundational setup lifecycle of a project, when a project is `active` updates and changes to its state and data can occur independently at any time.
 
 1. **Project Initiation (Owner):** The Owner creates a new `Project` record, setting its `due_date` and `priority` level (`Low`, `Medium`, `High`).
 2. **Manager Designation (Owner):** The Owner designates a manager from among themselves and their employees.
