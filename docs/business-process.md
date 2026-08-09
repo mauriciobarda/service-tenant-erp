@@ -26,7 +26,31 @@ The foundational lifecycle of a business engagement, mapping how client demands 
 8. **Payment Processing (Owner):** Upon receiving client payment, the Owner updates the invoice status to `Paid`, which automatically refreshes the organization's revenue metrics.
 9. **Lifecycle State Transitions (Owner):** At any point, the Owner can update the `Project` status to `on_hold` or `cancelled`. The system dynamically filters those tasks from the assigned employees' work queues without altering individual task histories.
 
+### Core Lifecycle Diagram
 
+```mermaid
+flowchart TD
+    classDef stateMachine stroke-width:2px;
 
+    %% Phase 1: Initialization
+    S1[1. Project Initiation] -->|Enters Active State| Active_Project_State
 
+    %% Active Lifecycle Pool (Everything can happen concurrently)
+    subgraph Active_Project_State [Active Project Execution Pool]
+        S2("2. Manager Designation:\nAssign / Reassign PM")
+        S3("3. Work Breakdown Structure:\nTask Creation")
+        S4("4. Task Priority Setting")
+        S5("5. Employee Assignment")
+        S6("6. Expense Tracking")
+        S7("7. Independent Invoicing")
+        S8("8. Payment Processing")
+    end
 
+    %% Global Interrupt pulling OUT of the active state
+    Active_Project_State -.->|"Changing status to\non_hold / cancelled / completed"| S9{{"Non-Active States:\nFilters tasks out of active queues & pauses updates"}}
+
+    %% Return path to Active State
+    S9 ==>|"Reactivating status\nback to active"| Active_Project_State 
+
+    class S9 stateMachine;
+```
