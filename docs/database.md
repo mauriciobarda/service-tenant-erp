@@ -12,3 +12,89 @@ This document specifies the physical data relationships, implementation decision
 * **Unified Role-Based Authorization:** The `User` entity serves as a single unified table representing all internal actors, including both `Owner` and `Employee`. Functional permissions and access controls are dynamically determined at runtime by evaluating the user's assigned role.
 * **Financial Audit Preservation:** In accordance with standard accounting principles, `Invoice` records are never physically deleted from the system. If an invoice is cancelled, its status column is mutated to `void`.
 * **Tenant-scoped Authentication Credentials:** To support identical usernames or duplicate emails accros diferent tenants, the authentication system requires a unique organization `slug` alongside individual credentials at login. The application resolves the tenant by this slug first, ensuring usernames only need to be unique within their respective organization boundaries.
+
+
+
+## Entity-Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+    ORGANIZATION ||--o{ USER : has
+    ORGANIZATION ||--o{ CUSTOMER : manages
+    CUSTOMER ||--o{ PROJECT : orders
+
+    PROJECT ||--o{ TASK : contains
+    PROJECT ||--o{ EXPENSE : incurs
+    PROJECT ||--o{ INVOICE : generates
+
+    %% Task assignment and project management links
+    USER ||--o{ PROJECT : manage_as_pm   
+    USER ||--o{ TASK_ASSIGNMENT : receives
+    TASK ||--o{ TASK_ASSIGNMENT : allocates
+
+    ORGANIZATION {
+        uuid id PK
+        varchar slug UK
+        varchar name
+    }
+
+    USER {
+        uuid id PK
+        uuid organization_id FK
+        varchar name
+        varchar email
+        varchar role "ENUM: 'owner', 'employee'"
+    }
+
+    CUSTOMER {
+        uuid id PK
+        uuid organization_id FK
+        varchar name
+        varchar phone_number
+    }
+
+    PROJECT {
+        uuid id PK
+        uuid customer_id FK
+        uuid manager_id FK "Reference USER.id"
+        varchar name
+        varchar priority "ENUM: 'low', 'medium', 'high'"       
+        varchar status "ENUM: 'active', 'completed', 'on_hold', 'cancelled'"
+        date start_date
+        date end_date "Nullable"
+    }
+
+    TASK {
+        uuid id PK
+        uuid project_id FK
+        uuid invoice_id FK "Nullable : NULL means unbilled"
+        varchar title
+        varchar status "ENUM: 'todo', 'in_progress', 'cancelled', 'done'"
+        varchar priority "ENUM: 'low', 'medium', 'high'"
+        date due_date "Nullable"
+        timestamp completed_at "Nullable"
+    }
+
+    TASK_ASSIGNMENT {
+        uuid id PK
+        uuid task_id FK
+        uuid user_id FK
+    }
+
+    EXPENSE {
+        uuid id PK
+        uuid project_id FK
+        numeric amount
+        varchar description
+    }
+
+    INVOICE {
+        uuid id PK
+        uuid project_id FK 
+        uuid customer_id FK
+        varchar invoice_number
+        numeric total_amount
+        varchar status "ENUM: 'draft', 'sent', 'paid', 'void'"
+        jsonb line_items "Snapshot of tasks/expenses text and costs"
+    }
+```
