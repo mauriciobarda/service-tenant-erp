@@ -28,9 +28,3 @@ Detailed technical specifications are maintained in the `/docs` directory:
 - [Database Schema & ERD](docs/database.md)
 - [API Specifications](docs/api.md)
 - [Development Roadmap](docs/roadmap.md)
-
-
-
-
-
-
