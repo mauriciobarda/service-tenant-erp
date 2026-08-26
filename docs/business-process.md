@@ -21,8 +21,8 @@ The foundational lifecycle of a business engagement, mapping how client demands 
 3. **Work Breakdown Structure (Manager):** The designated Project Manager outlines the project scope by creating distinct `Tasks`.
 4. **Task Priority Setting (Manager):** The Manager assigns a `priority` level (`Low`, `Medium`, `High`) to each task. New tasks default to `Medium`.
 5. **Employee Assignment (Manager):** The Manager links one or more `Employee` records to each task, automatically populating the respective employees' work queues with the assigned tasks.
-6. **Expense Tracking (Manager):** The Manager logs operational and material `Expense` records against the `Project` to track internal costs.
-7. **Creation of Billable Items (Manager):** The Manager can generate `Billable Item` from tasks, expenses or as a independent flat-fee structure with no source. A `Billable Item` can be split and distributed across one or multiple `Invoice` records via `Billable Item Portion`. 
+6. **Expense Tracking (Manager):** The Manager logs optional labor costs to `Task` records and creates operational or material `Expense` records against the `Project` to track internal costs.
+7. **Creation of Billable Items (Owner):** The Manager can generate `Billable Item` from tasks, expenses or as a independent flat-fee structure with no source. A `Billable Item` can be split and distributed across one or multiple `Invoice` records via `Billable Item Portion`. 
 8. **Independent Invoicing (Owner):** The Owner generates an `Invoice` at any point composed of one or more `Billable Item Portion`. The billing reicipient could be the linked `Customer` or any other billing entity defined at that time.
 9. **Payment Processing (Owner):** Upon receiving client payment, the Owner updates the invoice status to `Paid`, which automatically refreshes the organization's revenue metrics.
 10. **Lifecycle State Transitions (Owner):** At any point, the Owner can update the `Project` status to `on_hold` or `cancelled`. The system dynamically filters those tasks from the assigned employees' work queues without altering individual task histories.
@@ -87,7 +87,7 @@ flowchart LR
 * **`Owner`**: A User with admin permissions over the Organization. Creates new projects, sets global properties, designates Managers, and generates or updates Invoices. Can invite other Users as employees and create Customers.
 * **`Organization`**: Centralizes and contains all projects, history, employee staff, and customer list.
 * **`Manager`**: A User linked to an Organization with a Manager role over a specific Project. Can create tasks, assign employees to them, and log expenses.
-* **`Task`**: The minimal unit of work to be done. Generated continuously during project execution, each task has a `priority` level and transitions through states (`todo`, `in_progress`, `cancelled`, `done`).
+* **`Task`**: The minimal unit of work to be done. Generated continuously during project execution, each task has a `priority` level and an optional `labor_cost`, and transitions through states (`todo`, `in_progress`, `cancelled`, `done`).
 * **`Expense`**: An operational or material cost record. Any number of expenses can be logged into a Project.
 * **`Billable Item`**: A financial representation of an expense, task, or arbitrary concept generated to be charged to a client. It acts as a value container that can be divided into distinct portions and distributed across one or multiple invoices.
 * **`Invoice`**: An on-demand billing record composed of Billable Items. Any number of invoices can be generated and linked to a Project, remaining completely independent of expenses. Transitions through states (`draft`, `sent`, `paid`, `void`, where `void` represents an issued invoice that was subsequently cancelled).
