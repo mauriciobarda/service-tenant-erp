@@ -22,9 +22,10 @@ The foundational lifecycle of a business engagement, mapping how client demands 
 4. **Task Priority Setting (Manager):** The Manager assigns a `priority` level (`Low`, `Medium`, `High`) to each task. New tasks default to `Medium`.
 5. **Employee Assignment (Manager):** The Manager links one or more `Employee` records to each task, automatically populating the respective employees' work queues with the assigned tasks.
 6. **Expense Tracking (Manager):** The Manager logs operational and material `Expense` records against the `Project` to track internal costs.
-7. **Independent Invoicing (Owner):** The Owner generates an `Invoice` at any time, independently of the logged internal expenses. The billing reicipient could be the linked `Customer` or any other billing entity defined at that time.
-8. **Payment Processing (Owner):** Upon receiving client payment, the Owner updates the invoice status to `Paid`, which automatically refreshes the organization's revenue metrics.
-9. **Lifecycle State Transitions (Owner):** At any point, the Owner can update the `Project` status to `on_hold` or `cancelled`. The system dynamically filters those tasks from the assigned employees' work queues without altering individual task histories.
+7. **Creation of Billable Items (Manager):** The Manager can generate `Billable Item` from tasks, expenses or as a independent flat-fee structure with no source. A `Billable Item` can be split and distributed across one or multiple `Invoice` records via `Billable Item Portion`. 
+8. **Independent Invoicing (Owner):** The Owner generates an `Invoice` at any point composed of one or more `Billable Item Portion`. The billing reicipient could be the linked `Customer` or any other billing entity defined at that time.
+9. **Payment Processing (Owner):** Upon receiving client payment, the Owner updates the invoice status to `Paid`, which automatically refreshes the organization's revenue metrics.
+10. **Lifecycle State Transitions (Owner):** At any point, the Owner can update the `Project` status to `on_hold` or `cancelled`. The system dynamically filters those tasks from the assigned employees' work queues without altering individual task histories.
 
 ### Core Lifecycle Diagram
 
@@ -43,17 +44,41 @@ flowchart TD
         S4("4. Task Priority Setting")
         S5("5. Employee Assignment")
         S6("6. Expense Tracking")
-        S7("7. Independent Invoicing")
-        S8("8. Payment Processing")
+        S7("7. Creation of Billable Items")
+        S8("8. Independent Invoicing")
+        S9("9. Payment Processing")
     end
 
     %% Global Interrupt pulling OUT of the active state
-    Active_Project_State -.->|"Changing status to\non_hold / cancelled / completed"| S9{{"Non-Active States:\nFilters tasks out of active queues & pauses updates"}}
+    Active_Project_State -.->|"Changing status to\non_hold / cancelled / completed"| S10{{"Non-Active States:\nFilters tasks out of active queues & pauses updates"}}
 
     %% Return path to Active State
-    S9 ==>|"Reactivating status\nback to active"| Active_Project_State 
+    S10 ==>|"Reactivating status\nback to active"| Active_Project_State 
 
-    class S9 stateMachine;
+    class S10 stateMachine;
+```
+
+### Billing Diagram Flow
+
+```mermaid
+flowchart LR
+    Task[1. Task] -->|1:1 Link| BI1[3. Billable Item 1]
+    Expense[2. Expense] -->|1:1 Link| BI2[4. Billable Item 2]
+    
+    subgraph Billing_Bridge [The Billing Bridge]
+        BI1
+        BI2
+        BI3[5. Billable Item 3]
+    end
+    
+    BI1 -->|Splits into 1:N| Inv1[Invoice A]
+    BI1 -->|Splits into 1:N| Inv2[Invoice B]
+
+    BI2 -->|Splits into 1:N| Inv1[Invoice A]
+    BI2 -->|Splits into 1:N| Inv2[Invoice B]
+
+    BI3 -->|Splits into 1:N| Inv1[Invoice A]
+    BI3 -->|Splits into 1:N| Inv2[Invoice B]
 ```
 
 ### Core Domain Nouns & Actions
@@ -64,6 +89,7 @@ flowchart TD
 * **`Manager`**: A User linked to an Organization with a Manager role over a specific Project. Can create tasks, assign employees to them, and log expenses.
 * **`Task`**: The minimal unit of work to be done. Generated continuously during project execution, each task has a `priority` level and transitions through states (`todo`, `in_progress`, `cancelled`, `done`).
 * **`Expense`**: An operational or material cost record. Any number of expenses can be logged into a Project.
-* **`Invoice`**: An on-demand billing record. Any number of invoices can be generated and linked to a Project, remaining completely independent of expenses. Transitions through states (`draft`, `sent`, `paid`, `void`, where `void` represents an issued invoice that was subsequently cancelled).
+* **`Billable Item`**: A financial representation of an expense, task, or arbitrary concept generated to be charged to a client. It acts as a value container that can be divided into distinct portions and distributed across one or multiple invoices.
+* **`Invoice`**: An on-demand billing record composed of Billable Items. Any number of invoices can be generated and linked to a Project, remaining completely independent of expenses. Transitions through states (`draft`, `sent`, `paid`, `void`, where `void` represents an issued invoice that was subsequently cancelled).
 * **`Employee`**: A User linked to an Organization who was invited by the Owner. Maintains a personal queue of tasks to be done and can be set as the Manager of any number of projects.
 * **`Customer`**: An external client profile sponsoring the business engagement. Serves as the default relationship linked to the Project and can be set as the billing recipient.
