@@ -57,3 +57,43 @@ flowchart TD
 * **Controller Layer:** Executes structural validation via *Zod*, transforms raw parameters into type-safe DTOs, and sets HTTP status responses.
 * **Pragmatic Use Case Layer:** Executes core domain logic and runs direct *Prisma Client* queries.
 
+## Directory and File System Organization
+
+The project uses a **Feature-Based Modular Structure** under `src/modules`. Code is organized around business domain entities rather than technical roles.
+
+```text
+backend/
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.ts
+├── src/
+│   ├── config/
+│   │   └── env.ts                  # Runtine environment parsing via zod
+│   ├── middleware/
+│   │   ├── auth.middleware.ts
+│   │   ├── tenant.middleware.ts    # Tenent resolution binding req.TenantId
+│   │   └── error.middleware.ts
+│   ├── types/
+│   │   └── express.d.ts            # Express request augmentation for tenant context
+│   ├── utils/
+│   └── modules/                    # Domain Feature Modules
+│       ├── auth/
+│       ├── users/
+│       ├── customers/
+│       ├── projects/
+│       ├── tasks/
+│       ├── expenses/
+│       └── invoices/
+│           ├── [module].routes.ts
+│           ├── [module].controller.ts
+│           ├── [module].schemas.ts
+│           └── use-cases/           #Single-purpose transaction handlers
+│               ├── create-[entity].ts
+│               └── update-[entity].ts
+│   ├── app.ts
+│   └── server.ts
+├── Dockerfile
+├── eslint.config.js
+└── tsconfig.json
+```
