@@ -51,7 +51,7 @@ flowchart TD
     Controller -->|5. HTTP JSON Response| Client
 ```
 
-### Layer Responsabilities
+### Layer Responsibilities
 
 * **Express Middleware Chain:** Handles session extraction, tenant verification (binding `req.tenantId`), and global exception catching. 
 * **Controller Layer:** Executes structural validation via *Zod*, transforms raw parameters into type-safe DTOs, and sets HTTP status responses.
@@ -69,10 +69,10 @@ backend/
 │   └── seed.ts
 ├── src/
 │   ├── config/
-│   │   └── env.ts                  # Runtine environment parsing via zod
+│   │   └── env.ts                  # Runtine environment parsing via Zod
 │   ├── middleware/
 │   │   ├── auth.middleware.ts
-│   │   ├── tenant.middleware.ts    # Tenent resolution binding req.TenantId
+│   │   ├── tenant.middleware.ts    # Tenant resolution binding req.tenantId
 │   │   └── error.middleware.ts
 │   ├── types/
 │   │   └── express.d.ts            # Express request augmentation for tenant context
@@ -97,3 +97,32 @@ backend/
 ├── eslint.config.js
 └── tsconfig.json
 ```
+
+## Multi-Tenancy & Data Isolation
+
+Data privacy and multi-tenancy isolation are enforced via **Tenant slug-to-ID injection and practical denormalization**, adding an `organization_id` column to all tenant-specific tables.
+
+### Tenant Resolution and Request Flow
+
+To support identical email credential across multiple independent organization boundaries, authentication is explicitly isolated by tenant scopes.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as React Client
+    participant MW as Tenant Middleware
+    participant Engine as Express Controller
+    participant DB as PostgreSQL (Prisma)
+
+    Client->>MW: HTTP Request (X-Tenant-Slug Header)
+    MW->>DB: Lookup Organization ID by Unique Slug
+    DB->>MW: Return organization_id
+    Note over MW: Mutates Request Object:<br/>Injects req.tenantId
+    MW->>Engine: Forward Sanitized Request Context
+    Engine->>DB: Execute Query (WHERE organization_id = req.tenantId)
+    DB-->>Client: Returns Isolated Dataset Response
+```
+
+### Front-end & Back-end Coordination for Specific Slug Request
+
+To keep API endpoints simple and elegant and because we control both the back-end and front-end, slugs will be extracted from the url in the front-end and added as a HTTP custom header `X-Tenant-Slug`.
