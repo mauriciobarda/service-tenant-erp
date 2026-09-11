@@ -77,7 +77,7 @@ erDiagram
         varchar title
         varchar status "ENUM: 'todo', 'in_progress', 'cancelled', 'done'"
         varchar priority "ENUM: 'low', 'medium', 'high'"
-        numeric labor_cost "Nullable: Internal human resource cost"
+        bigint labor_cost_in_cents "Nullable: Internal human resource cost"
         date due_date "Nullable"
         timestamp completed_at "Nullable"
     }
@@ -91,7 +91,7 @@ erDiagram
     EXPENSE {
         uuid id PK
         uuid project_id FK
-        numeric internal_cost
+        bigint internal_cost_in_cents
     }
 
     BILLABLE_ITEM {
@@ -99,7 +99,7 @@ erDiagram
         uuid project_id FK
         uuid task_id FK "Nullable, Unique"
         uuid expense_id FK "Nullable, Unique"
-        numeric total_value
+        bigint total_value_in_cents
         boolean is_written_off "Default: false"
     }
 
@@ -107,7 +107,7 @@ erDiagram
         uuid id PK
         uuid billable_item_id FK
         uuid invoice_id FK
-        numeric amount_allocated
+        bigint amount_allocated_in_cents
     }
 
     INVOICE {
