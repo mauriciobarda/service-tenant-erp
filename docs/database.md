@@ -28,8 +28,8 @@ erDiagram
     PROJECT ||--o{ BILLABLE_ITEM : tracks
     PROJECT ||--o{ INVOICE : generates
 
-    TASK |o--o| BILLABLE_ITEM : converts_to
-    EXPENSE |o--o| BILLABLE_ITEM : converts_to
+    TASK |o--o{ BILLABLE_ITEM : converts_to
+    EXPENSE |o--o{ BILLABLE_ITEM : converts_to
 
     BILLABLE_ITEM ||--o{ BILLABLE_ITEM_PORTION : distributes_to
     INVOICE ||--o{ BILLABLE_ITEM_PORTION : contains
@@ -97,8 +97,8 @@ erDiagram
     BILLABLE_ITEM {
         uuid id PK
         uuid project_id FK
-        uuid task_id FK "Nullable, Unique"
-        uuid expense_id FK "Nullable, Unique"
+        uuid task_id FK "Nullable"
+        uuid expense_id FK "Nullable"
         bigint total_value_in_cents
         boolean is_written_off "Default: false"
     }
