@@ -91,7 +91,7 @@ erDiagram
     EXPENSE {
         uuid id PK
         uuid project_id FK
-        bigint internal_cost_in_cents
+        bigint material_cost_in_cents "Cost regarding materials and third party tools"
         timestampsz incurred_at 
     }
 
