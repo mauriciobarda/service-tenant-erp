@@ -92,6 +92,7 @@ erDiagram
         uuid id PK
         uuid project_id FK
         bigint internal_cost_in_cents
+        timestampsz incurred_at 
     }
 
     BILLABLE_ITEM {
