@@ -117,5 +117,8 @@ erDiagram
         uuid customer_id FK
         varchar invoice_number
         varchar status "ENUM: 'draft', 'sent', 'paid', 'void'"
+        timestamptz issued_at
+        date due_date "payment due date"
+        timestamptz paid_at
     }
 ```
