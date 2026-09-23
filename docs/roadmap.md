@@ -14,7 +14,7 @@ The project follows a **Domain-first** implementation strategy: establishing rel
 - [x] Select the technical stack and document it (`README.md`)
 - [x] Establish data architectural decisions and draw high-level ERD (`docs/database.md`)
 - [x] Define global software layers, directory tree, and data flow (`docs/architecture.md`)
-- [] Document low-level table schemas, data types, and structural field rules (`docs/database.md`)
+- [x] Document low-level table schemas, data types, and structural field rules (`docs/database.md`)
 - [] Outline initial REST API endpoints for seeding and core loop validation (`docs/api.md`)
 
 ## Phase 1: Environment Setup & Database Foundations

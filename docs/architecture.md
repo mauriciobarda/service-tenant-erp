@@ -1,6 +1,6 @@
 # System Architecture Specifications
 
-This document defines the **technical architecture**, **operational layers**, **execution flow**, **directory organization**, and **data isolation mechanisms** for the Service Tenant ERP platform. It acts as the definitive engineering blueprint for building the platform's core engine.
+This document defines the **technical architecture**, **operational layers**, **execution flow**, **directory organization**, and **data isolation mechanisms** for the Service Tenant ERP platform. It serves as the engineering blueprint for the platform's execution core.
 
 
 ## HTTP Requests Lifecycle & Backend Layer Architecture
@@ -21,7 +21,8 @@ flowchart TD
     subgraph Express_Backend [Express Backend App Boundary]
         Middleware["Express Middleware Chain
         - Verifies Cookie Session
-        - Enforces req.tenantId Scope
+        - Validates Workspace Membership via Header
+        -Injects Authorized req.tenantId Context & req.userRole
         - Global Error Catching"]
 
         Middleware -->|2. Secure Context & Raw Payload| Controller["Controller Layer
@@ -32,7 +33,7 @@ flowchart TD
         %% The Unified Layer combining logic and data access via Prisma
         subgraph UseCase_Layer [Pragmatic Use Case Layer]
             DirectionalBusiness["Core Domain Logic
-            - State Machine Changes
+            - Lifecycle State Changes
             - Workflow Rules
             - Data Mutations"]
             
@@ -53,7 +54,7 @@ flowchart TD
 
 ### Layer Responsibilities
 
-* **Express Middleware Chain:** Handles session extraction, tenant verification (binding `req.tenantId`), and global exception catching. 
+* **Express Middleware Chain:** Handles session extraction, verifies that the user belongs to the requested workspace (binding `req.tenantId` and `req.userRole`), and catches global exception. 
 * **Controller Layer:** Executes structural validation via *Zod*, transforms raw parameters into type-safe DTOs, and sets HTTP status responses.
 * **Pragmatic Use Case Layer:** Executes core domain logic and runs direct *Prisma Client* queries.
 
@@ -72,7 +73,7 @@ backend/
 │   │   └── env.ts                  # Runtine environment parsing via Zod
 │   ├── middleware/
 │   │   ├── auth.middleware.ts
-│   │   ├── tenant.middleware.ts    # Tenant resolution binding req.tenantId
+│   │   ├── tenant.middleware.ts    # Validates membership and binds data
 │   │   └── error.middleware.ts
 │   ├── types/
 │   │   └── express.d.ts            # Express request augmentation for tenant context
@@ -100,11 +101,11 @@ backend/
 
 ## Multi-Tenancy & Data Isolation
 
-Data privacy and multi-tenancy isolation are enforced via **Tenant slug-to-ID injection and practical denormalization**, adding an `organization_id` column to all tenant-specific tables.
+Data isolation is enforced via **User-First Global Authentication and Workspace Context Verification**. 
 
-### Tenant Resolution and Request Flow
+### Tenant Verification Flow
 
-To support identical email credential across multiple independent organization boundaries, authentication is explicitly isolated by tenant scopes.
+Users authenticate once globally and are then presented with a router dashboard to select from their authorized workspaces. Once a workspace is selected, the client attaches that active workspace ID to all operational requests, which is validated by the express middleware on every request.
 
 ```mermaid
 sequenceDiagram
@@ -114,15 +115,11 @@ sequenceDiagram
     participant Engine as Express Controller
     participant DB as PostgreSQL (Prisma)
 
-    Client->>MW: HTTP Request (X-Tenant-Slug Header)
-    MW->>DB: Lookup Organization ID by Unique Slug
-    DB->>MW: Return organization_id
-    Note over MW: Mutates Request Object:<br/>Injects req.tenantId
+    Client->>MW: HTTP Request (X-Organization-Id Header + Auth Cookie)
+    MW->>DB: Verify User has Active Membership for this Organization ID
+    DB->>MW: Confirm Active Membership & Return Role Context
+    Note over MW: Injects req.tenantId & req.userRole into Request Object
     MW->>Engine: Forward Sanitized Request Context
     Engine->>DB: Execute Query (WHERE organization_id = req.tenantId)
     DB-->>Client: Returns Isolated Dataset Response
 ```
-
-### Front-end & Back-end Coordination for Specific Slug Request
-
-To keep API endpoints simple and elegant and because we control both the back-end and front-end, slugs will be extracted from the url in the front-end and added as a HTTP custom header `X-Tenant-Slug`.
