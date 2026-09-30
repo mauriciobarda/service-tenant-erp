@@ -169,7 +169,7 @@ Tenant-scoped user profiles.
 Junction entity controlling isolated workspace membership and access role.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique mermbership identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Associated workspace scope. |
 | `user_id` | `UUID` | `NOT NULL`, `REFERENCES users(id) ON DELETE CASCADE` | Associated global user account. |
@@ -186,7 +186,7 @@ Junction entity controlling isolated workspace membership and access role.
 External client profiles managed by the organization.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique customer identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `name` | `VARCHAR(150)` | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)` | Display or legal name of the client company. Prevents empty or whitespace-only names. |
@@ -202,7 +202,7 @@ External client profiles managed by the organization.
 Primary operation container for tasks, costs, and invoicing.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique project identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `customer_id` | `UUID` | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT` | External client sponsoring the project. |
@@ -220,7 +220,7 @@ Primary operation container for tasks, costs, and invoicing.
 Work unit, may convert to billable items.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique task identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `project_id` | `UUID` | `NOT NULL`, `REFERENCES projects(id) ON DELETE CASCADE ` | Parent project container. |
@@ -238,7 +238,7 @@ Work unit, may convert to billable items.
 Mapping junction table linking users to tasks.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique assignment identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `task_id` | `UUID` | `NOT NULL`, `REFERENCES tasks(id) ON DELETE CASCADE` | Assigned task. Deleting a task purges its assignments. |
@@ -250,7 +250,7 @@ Mapping junction table linking users to tasks.
 Direct project-level cost incurred during operation.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique expense identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `project_id` | `UUID` | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT` | Parent project container. |
@@ -263,7 +263,7 @@ Direct project-level cost incurred during operation.
 Financial charge generated for client billing. Can be split across multiple invoicing.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique billable item identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `project_id` | `UUID` | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT` | Parent project container. |
@@ -282,7 +282,7 @@ Financial charge generated for client billing. Can be split across multiple invo
 Line-item splits for billing. Links a specific dollar amount of a billable item to a specific invoice.
 
 | Column | PostgreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique portion identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `billable_item_id` | `UUID` | `NOT NULL`, `REFERENCE billable_items(id) ON DELETE RESTRICT` | Parent billable item. |
@@ -298,7 +298,7 @@ Line-item splits for billing. Links a specific dollar amount of a billable item 
 Formal billing document issued to customers.
 
 | Column | PostreSQL Type | Constraints | Description |
-| : --- | : --- | : --- | : --- |
+| :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique invoice identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `customer_id` | `UUID` | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT` | Target client billed. |
