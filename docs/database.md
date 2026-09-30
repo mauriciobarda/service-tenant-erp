@@ -55,7 +55,7 @@ erDiagram
     projects {
         uuid id PK
         uuid customer_id FK
-        uuid manager_id FK "References users.id"
+        uuid manager_id FK "References organization_memberships.id"
         varchar name
         varchar priority "ENUM: 'low', 'medium', 'high'"
         varchar status "ENUM: 'active', 'completed', 'on_hold', 'cancelled'"
@@ -206,7 +206,7 @@ Primary operation container for tasks, costs, and invoicing.
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique project identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `customer_id` | `UUID` | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT` | External client sponsoring the project. |
-| `manager_id` | `UUID` | `NOT NULL`, `REFERENCES users(id) ON DELETE RESTRICT` | Designated internal manager (Owner or Employee). |
+| `manager_id` | `UUID` | `NOT NULL`, `REFERENCES organization_memberships(id) ON DELETE RESTRICT` | Designated internal manager (Owner or Employee). |
 | `name` | `VARCHAR(150)` | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)` | Project title. Ensures descriptive names. |
 | `description` | `TEXT` | `NULLABLE` | Additional information on project scope, objectives and workflow. |
 | `priority` | `VARCHAR(10)` | `NOT NULL`, `CHECK (priority IN ('low', 'medium', 'high'))` | Business urgency level in completing the project. |
