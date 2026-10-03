@@ -190,7 +190,7 @@ External client profiles managed by the organization.
 | `id` | `UUID` | `PRIMARY KEY`, `DEFAULT gen_random_uuid()` | Unique customer identifier. |
 | `organization_id` | `UUID` | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key. |
 | `name` | `VARCHAR(150)` | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)` | Display or legal name of the client company. Prevents empty or whitespace-only names. |
-| `phone_number` | `VARCHAR(30)` | `NOT NULL`, `CHECK (phone_number ~ '^\+?[0-9\s\-()]+$')` | Primary contact number. Must include a '+' followed by the country code and digits only. |
+| `phone_number` | `VARCHAR(30)` | `NOT NULL`, `CHECK (phone_number ~ '^\+[1-9][0-9]{7,14}$')` | Primary contact number. Must include a '+' followed by the country code and digits only. |
 | `notes` | `TEXT` | `NULLABLE` | Internal CRM notes. |
 | `is_active`| `BOOLEAN` | `NOT NULL`, `DEFAULT TRUE` | Soft-deletion flag. |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL`, `DEFAULT NOW()` | Creation audit timestamp. |
