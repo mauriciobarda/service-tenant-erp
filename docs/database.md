@@ -15,7 +15,7 @@ This document specifies the physical data relationships and core implementation 
 
 ### Financial Integrity & Audit Trails
 
-* **Audit Preservation:** Invoices are never physically deleted. Canceled transactions switch to a `void` status to maintain standard accounting history.
+* **Audit Preservation:** Invoices in `sent`, `paid` or `void` status are never physically deleted. Canceled transactions switch to a `void` status to maintain standard accounting history.
 * **Decoupled Pricing:** Billable Items stores an independent mutable pricing. Future modifications to the source task o expense do not mutate existing generated Items.
 * **Inmutable Portions:** Once a billable portion is allocated to an invoice, its allocated amount is frozen. This enables safe, dynamic recalculation of remaining unbilled balances.
 
