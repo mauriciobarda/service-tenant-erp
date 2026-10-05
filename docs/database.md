@@ -30,6 +30,7 @@ This document specifies the physical data relationships and core implementation 
 erDiagram
     users {
         uuid id PK
+        varchar name
         varchar email UK
         varchar password_hash
     }
