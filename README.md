@@ -1,6 +1,6 @@
 # Service Tenant ERP
 
-A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-oriented business. It enables organizations to manage client workflows, assign employees to project tasks, and monitor financial perfomance through integrated invoice and expense tracking.
+A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-oriented business. It enables organizations to manage client workflows, assign employees to project tasks, and monitor financial performance through integrated invoice and expense tracking.
 
 ## Core Modules & Features
 
