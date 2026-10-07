@@ -1,0 +1,24 @@
+{
+  "name": "service-tenant-erp",
+  "version": "1.0.0",
+  "description": "A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-oriented business. It enables organizations to manage client workflows, assign employees to project tasks, and monitor financial performance through integrated invoice and expense tracking.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mauriciobarda/service-tenant-erp.git"
+  },
+  "keywords": [],
+  "author": "Mauricio Barda",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/mauriciobarda/service-tenant-erp/issues"
+  },
+  "homepage": "https://github.com/mauriciobarda/service-tenant-erp#readme"
+}
