@@ -1,0 +1,17 @@
+# Dependencies & Package management
+node_modules
+package-lock.json
+
+# Build outputs (Vite & Node compilation)
+dist
+build
+
+# Prisma engine binaries / migrations
+/prisma/migrations
+
+# Environment and secrets
+.env
+.env.*
+
+# Logs
+*.log
