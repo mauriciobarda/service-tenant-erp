@@ -62,8 +62,25 @@ flowchart TD
 
 The project uses a **Feature-Based Modular Structure** under `src/modules`. Code is organized around business domain entities rather than technical roles.
 
+### Root Workspace Structure
+
 ```text
-backend/
+service-tenant-erp/
+├── apps/
+│   ├── api/                    # Express + TypeScript Backend API
+│   └── web/                    # React + Vite Frontend Client
+├── packages/
+│   └── contracts/              # Shared Zod validation schemas & types
+├── docs/
+├── compose.yaml
+├── package.json
+└── eslint.config.js
+```
+
+### API Application (apps/api)
+
+```text
+apps/api/
 ├── prisma/
 │   ├── schema.prisma
 │   ├── migrations/
