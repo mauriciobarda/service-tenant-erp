@@ -23,6 +23,6 @@ _Goal: Establish technical specifications, data contracts, and project scope pri
 _Goal: Create a runnable local environment with isolated database containers and migration management._
 
 - [x] Set up global and API container-level configurations for Prettier, ESLint and Typescript
-- [] Write `compose.yaml` for local PostgreSQL containerization
+- [x] Write `compose.yaml` for local PostgreSQL containerization
 - [] Initialize Prisma ORM, map out ERD constraints, and execute the initial migration
 - [] Build automated database seed scripts using Prisma Client to hydrate mock tenant data
