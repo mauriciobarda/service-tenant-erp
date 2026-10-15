@@ -12,6 +12,7 @@ This document specifies the physical data relationships and core implementation 
 * **Unified Role-Based Access Control:** Merges all internal actors (Owners and Employees) into the `User` entity. Permissions are dynamically evaluated at runtima based on the membership role.
 * **PostgreSQL Native Engine:** Schema targets PostgreSQL natively, leveraging explicit foreing keys and optimized composite indexes for tenant-scoped lookups.
 * **Tenant Protection:** Enforces `ON DELETE RESTRICT` on the `organizations` database to prevent cascading data loss.
+* **Database-Level Isolation Boundaries:** To prevent cross-tenant data leaks, all dependant relational tables must implement **Composite Foreign Keys**. Downstream child tables must reference parent tables using a compound tuple `FOREING KEY (organization_id, referenced_id) REFERENCES parent_table(organization_id, id)`. This ensures records can never reference entities belonging to a different tenant.
 
 ### Financial Integrity & Audit Trails
 
@@ -141,6 +142,8 @@ erDiagram
 ```
 
 ## Data Dictionay & Schema Specifications
+
+_Note: All schema tables must implement the **Database-Level Isolation Boundaries** (Composite Foreign Keys) defined in the Core Decisions section._
 
 ### 1. `organizations`
 Root tenant entity defining isolation boundaries.
