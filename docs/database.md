@@ -107,7 +107,7 @@ erDiagram
     invoices {
         uuid id PK
         uuid customer_id FK "Can differ from project customer"
-        uuid project_id FK "Nullable"
+        uuid project_id FK
         varchar invoice_number
         varchar status "ENUM: 'draft', 'sent', 'paid', 'void'"
         timestamptz issued_at
@@ -154,7 +154,7 @@ Root tenant entity defining isolation boundaries.
 | `updated_at` | `TIMESTAMPTZ` | `NOT NULL`, `DEFAULT NOW()` | Modification audit timestamp. |
 
 ### 2. `users`
-Tenant-scoped user profiles.
+Global user profiles.
 
 | Column | PostgreSQL Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
