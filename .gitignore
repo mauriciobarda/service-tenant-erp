@@ -12,3 +12,11 @@ build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# AI Agents & IDE Workspace Caches
+.agents/
+.claude/
+.windsurf/
+
+# Generated Prisma Client Output
+**/src/generated/prisma
