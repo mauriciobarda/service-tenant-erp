@@ -14,14 +14,35 @@ A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-
 
 - **Front-End:** React, TypeScript, Material UI, React Query, React Router
 - **Back-End:** Node.js, Express, TypeScript
-- **Database** PostgreSQL (Chosen for ACID compliance, strict foreign keys constraints, and relational aggregations)
+- **Database** PostgreSQL
 - **Testing:** Vitest, React Testing Library, Supertest, Playwright
 - **DevOps and tooling:** Docker Compose, GitHub Actions, ESLint, Prettier
+
+## Setup Instructions
+
+1. **Initialize environment configuration files:**
+   ```bash
+   pnpm run setup-env
+   ```
+
+2. **Install dependencies across the workspace:**
+   ```bash
+   pnpm install
+   ```
+
+3. **Start the localized database container:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Execute database migrations natively:**
+   ```bash
+   pnpm --filter .../api exec prisma migrate dev
+   ```
 
 ## System Architecture and Documentation
 
 Detailed technical specifications are maintained in the `/docs` directory:
-
 
 - [Business Process and Workflows](docs/business-process.md)
 - [System Architecture](docs/architecture.md)

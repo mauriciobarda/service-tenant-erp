@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "setup-env": "cp .env.example .env && cp apps/api/.env.example apps/api/.env"
   },
   "repository": {
     "type": "git",
