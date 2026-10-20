@@ -94,6 +94,7 @@ erDiagram
         uuid project_id FK
         uuid task_id FK "Nullable"
         uuid expense_id FK "Nullable"
+        varchar type "GENERATED: 'TASK', 'EXPENSE', 'DIRECT'"
         bigint total_value_in_cents
         boolean is_written_off
     }
@@ -275,17 +276,19 @@ Direct project-level cost incurred during operation.
 
 Financial charge generated for client billing. Can be split across multiple invoicing.
 
-| Column                 | PostgreSQL Type                                         | Constraints                                                   | Description                                                                                                                     |
-| :--------------------- | :------------------------------------------------------ | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------ |
-| `id`                   | `UUID`                                                  | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                    | Unique billable item identifier.                                                                                                |
-| `organization_id`      | `UUID`                                                  | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT` | Tenant ownership key.                                                                                                           |
-| `project_id`           | `UUID`                                                  | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT`      | Parent project container.                                                                                                       |
-| `task_id`              | `NULLABLE`, `REFERENCES tasks(id) ON DELETE RESTRICT`   | Source task reference.                                        |
-| `expense_id`           | `NULLABLE`, `REFERENCES expense(id) ON DELETE RESTRICT` | Source expense reference.                                     |
-| `total_value_in_cents` | `BIGINT`                                                | `NOT NULL`, `CHECK(total_value_in_cents >= 0)`                | Amount to be charged to the client.                                                                                             |
-| `is_written_off`       | `BOOLEAN`                                               | `NOT NULL`, `DEFAULT FALSE`                                   | Status flag marking a billing attempt as cancelled or written off, allowing a new billable item to be generated for the source. |
-| `created_at`           | `TIMESTAMPTZ`                                           | `NOT NULL`, `DEFAULT NOW()`                                   | Creation audit timestamp.                                                                                                       |
-| `updated_at`           | `TIMESTAMPTZ`                                           | `NOT NULL`, `DEFAULT NOW()`                                   | Modification audit timestamp.                                                                                                   |
+| Column                 | PostgreSQL Type | Constraints                                                                                                                             | Description                                                                                                                     |
+| :--------------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                   | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                              | Unique billable item identifier.                                                                                                |
+| `description`          | `TEXT`          | `NULLABLE`                                                                                                                              | Human-readable title or narrative of the charge. Snapshotted from tasks/expenses or entered manually for direct charges.        |
+| `organization_id`      | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                           | Tenant ownership key.                                                                                                           |
+| `project_id`           | `UUID`          | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT`                                                                                | Parent project container.                                                                                                       |
+| `task_id`              | `UUID`          | `NULLABLE`, `REFERENCES tasks(id) ON DELETE RESTRICT`                                                                                   | Source task reference.                                                                                                          |
+| `expense_id`           | `UUID`          | `NULLABLE`, `REFERENCES expense(id) ON DELETE RESTRICT`                                                                                 | Source expense reference.                                                                                                       |
+| `type`                 | `TEXT`          | `GENERATED  ALWAYS AS (CASE WHEN  task_id IS NOT NULL THEN 'TASK' WHEN expense_id IS NOT NULL THEN 'EXPENSE' ELSE 'DIRECT' END) STORED` | Automatic computed type based on the source reference.                                                                          |
+| `total_value_in_cents` | `BIGINT`        | `NOT NULL`, `CHECK(total_value_in_cents >= 0)`                                                                                          | Amount to be charged to the client.                                                                                             |
+| `is_written_off`       | `BOOLEAN`       | `NOT NULL`, `DEFAULT FALSE`                                                                                                             | Status flag marking a billing attempt as cancelled or written off, allowing a new billable item to be generated for the source. |
+| `created_at`           | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                             | Creation audit timestamp.                                                                                                       |
+| `updated_at`           | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                             | Modification audit timestamp.                                                                                                   |
 
 > **Check Constraint:** `CHECK (task_id IS NULL OR expense_id IS NULL)` enforces that a billable item originates from only one source type (task, expense or direct charge).
 > **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_task ON billable_items (task_id) WHERE is_written_off = FALSE AND task_id IS NOT NULL` ensures a task can only have one active non-written-off billable item at a time.
