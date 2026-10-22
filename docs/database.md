@@ -51,7 +51,7 @@ erDiagram
     customers {
         uuid id PK
         varchar name
-        varchar phone_number
+        varchar phone_number UK
     }
 
     projects {
@@ -205,7 +205,7 @@ External client profiles managed by the organization.
 | `created_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                   | Creation audit timestamp.                                                                |
 | `updated_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                   | Modification audit timestamp.                                                            |
 
-> **Composite Constraint:** `UNIQUE (`organization_id`, `name`)` prevents duplicated customer profiles from being created within the same business environment.
+> **Composite Constraint:** `UNIQUE (`organization_id`, `phone_number`)` prevents duplicated customer profiles from being created within the same business environment.
 
 ### 5. `projects`
 
