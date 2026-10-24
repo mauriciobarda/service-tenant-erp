@@ -25,6 +25,11 @@ This document specifies the physical data relationships and core implementation 
 - **Physical Pluralization:** Maps documentation entities (singular) to plural lowercase PostgreSQL tables (`users`, `projects`) to prevent SQL reserved keyword collisions.
 - **Diagram Optimization:** Ommits operational metadata (`created_at`, `updated_at`, `is_active`, `notes`, `description`, `organization_id`) from visual ERD diagrams to keep the focus strictlty on core business domain boundaries.
 
+### Project State Management
+
+- **Automatic Status when re-enter Active State**: Automatically calculates project status when switching back to Active State based on the existence of defined dates: `in_progress` if both`actual_start_date` and `planned_start_date` have values, `scheduled` if only `planned_date` does, `planning` otherwise.
+- **Terminal State Restrictions:** A `completed` status project must have a defined `actual_end_date` and cannot be reactivated to an Active state.
+
 ## Entity-Relationship Diagram (ERD)
 
 ```mermaid
@@ -60,9 +65,11 @@ erDiagram
         uuid manager_membership_id FK "References organization_memberships.id"
         varchar name
         varchar priority "ENUM: 'low', 'medium', 'high'"
-        varchar status "ENUM: 'active', 'completed', 'on_hold', 'cancelled'"
-        date start_date
-        date end_date "Nullable"
+        varchar status "ENUM: 'planning', 'scheduled', 'in_progress', 'completed', 'on_hold', 'cancelled'"
+        timestamptz planned_start_date "Nullable"
+        timestamptz planned_end_date "Nullable"
+        timestamptz actual_start_date "Nullable"
+        timestamptz actual_end_date "Nullable"
     }
 
     tasks {
@@ -211,20 +218,29 @@ External client profiles managed by the organization.
 
 Primary operation container for tasks, costs, and invoicing.
 
-| Column                 | PostgreSQL Type | Constraints                                                                     | Description                                                       |
-| :--------------------- | :-------------- | :------------------------------------------------------------------------------ | :---------------------------------------------------------------- |
-| `id`                   | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                      | Unique project identifier.                                        |
-| `organization_id`      | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                   | Tenant ownership key.                                             |
-| `customer_id`          | `UUID`          | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT`                       | External client sponsoring the project.                           |
-| `manager_mebership_id` | `UUID`          | `NOT NULL`, `REFERENCES organization_memberships(id) ON DELETE RESTRICT`        | Designated internal manager (Owner or Employee).                  |
-| `name`                 | `VARCHAR(150)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                                    | Project title. Ensures descriptive names.                         |
-| `description`          | `TEXT`          | `NULLABLE`                                                                      | Additional information on project scope, objectives and workflow. |
-| `priority`             | `VARCHAR(10)`   | `NOT NULL`, `CHECK (priority IN ('low', 'medium', 'high'))`                     | Business urgency level in completing the project.                 |
-| `status`               | `VARCHAR(15)`   | `NOT NULL`, `CHECK (status IN ('active', 'completed', 'on_hold', 'cancelled'))` | Lifecycle state.                                                  |
-| `start_date`           | `DATE`          | `NULLABLE`                                                                      | Planned start.                                                    |
-| `end_date`             | `DATE`          | `NULLABLE`                                                                      | Planned end.                                                      |
-| `created_at`           | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                     | Creation audit timestamp.                                         |
-| `updated_at`           | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                     | Modification audit timestamp.                                     |
+| Column                  | PostgreSQL Type | Constraints                                                                                                   | Description                                                                     |
+| :---------------------- | :-------------- | :------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------ |
+| `id`                    | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                    | Unique project identifier.                                                      |
+| `organization_id`       | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                 | Tenant ownership key.                                                           |
+| `customer_id`           | `UUID`          | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT`                                                     | External client sponsoring the project.                                         |
+| `manager_membership_id` | `UUID`          | `NOT NULL`, `REFERENCES organization_memberships(id) ON DELETE RESTRICT`                                      | Designated internal manager (Owner or Employee).                                |
+| `name`                  | `VARCHAR(150)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                                                                  | Project title. Ensures descriptive names.                                       |
+| `description`           | `TEXT`          | `NULLABLE`                                                                                                    | Additional information on project scope, objectives and workflow.               |
+| `priority`              | `VARCHAR(10)`   | `NOT NULL`, `CHECK (priority IN ('low', 'medium', 'high'))`                                                   | Business urgency level in completing the project.                               |
+| `status`                | `VARCHAR(15)`   | `NOT NULL`, `CHECK (status IN ('planning', 'scheduled', 'in_progress', 'completed', 'on_hold', 'cancelled'))` | Lifecycle state.                                                                |
+| `planned_start_date`    | `TIMESTAMPTZ`   | `NULLABLE`                                                                                                    | Baseline date when work is scheduled to begin.                                  |
+| `planned_end_date`      | `TIMESTAMPTZ`   | `NULLABLE`                                                                                                    | Baseline deadline.                                                              |
+| `actual_start_date`     | `TIMESTAMPTZ`   | `NULLABLE`                                                                                                    | Timestamp when the project is kicked off (status transitions to 'in_progress'). |
+| `actual_end_date`       | `TIMESTAMPTZ`   | `NULLABLE`                                                                                                    | Timestamp when the project is closed out (status transitions to 'completed').   |
+| `created_at`            | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                   | Creation audit timestamp.                                                       |
+| `updated_at`            | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                   | Modification audit timestamp.                                                   |
+
+> **State Consistency Check:** `Enforces valid status and defined dates combinations across the project lifecycle:
+
+- `status = 'planning'` &rarr; `all planned_start & actual_start/end ARE NULL`
+- `status = 'scheduled'` &rarr; `planned_start HAS VALUE AND actual_start/end ARE NULL`
+- `status = 'in_progress'` &rarr; `actual_start HAS VALUE AND actual_end IS NULL`
+- `status = 'completed'` &rarr; `actual_end HAS VALUE`
 
 ### 6. `tasks`
 
@@ -241,7 +257,7 @@ Work unit, may convert to billable items.
 | `priority`        | `VARCHAR(10)`   | `NOT NULL`, `CHECK (priority IN ('low', 'medium', 'high'))`                  | Task urgency classification.            |
 | `labor_cost`      | `BIGINT`        | `NULLABLE`, `CHECK(labor_cost >= 0)`                                         | Internal human resource cost.           |
 | `due_date`        | `DATE`          | `NULLABLE`                                                                   | Target completion date.                 |
-| `completed_at`    | `TIMESTAMPZ`    | `NULLABLE`                                                                   | Timestamp when task reach `done` state. |
+| `completed_at`    | `TIMESTAMPTZ`   | `NULLABLE`                                                                   | Timestamp when task reach `done` state. |
 | `created_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                  | Creation audit timestamp.               |
 | `updated_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                  | Modification audit timestamp.           |
 
@@ -283,7 +299,7 @@ Financial charge generated for client billing. Can be split across multiple invo
 | `organization_id`      | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                           | Tenant ownership key.                                                                                                           |
 | `project_id`           | `UUID`          | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT`                                                                                | Parent project container.                                                                                                       |
 | `task_id`              | `UUID`          | `NULLABLE`, `REFERENCES tasks(id) ON DELETE RESTRICT`                                                                                   | Source task reference.                                                                                                          |
-| `expense_id`           | `UUID`          | `NULLABLE`, `REFERENCES expense(id) ON DELETE RESTRICT`                                                                                 | Source expense reference.                                                                                                       |
+| `expense_id`           | `UUID`          | `NULLABLE`, `REFERENCES expenses(id) ON DELETE RESTRICT`                                                                                | Source expense reference.                                                                                                       |
 | `type`                 | `TEXT`          | `GENERATED  ALWAYS AS (CASE WHEN  task_id IS NOT NULL THEN 'TASK' WHEN expense_id IS NOT NULL THEN 'EXPENSE' ELSE 'DIRECT' END) STORED` | Automatic computed type based on the source reference.                                                                          |
 | `total_value_in_cents` | `BIGINT`        | `NOT NULL`, `CHECK(total_value_in_cents >= 0)`                                                                                          | Amount to be charged to the client.                                                                                             |
 | `is_written_off`       | `BOOLEAN`       | `NOT NULL`, `DEFAULT FALSE`                                                                                                             | Status flag marking a billing attempt as cancelled or written off, allowing a new billable item to be generated for the source. |
@@ -315,22 +331,22 @@ Line-item splits for billing. Links a specific dollar amount of a billable item 
 
 Formal billing document issued to customers.
 
-| Column            | PostreSQL Type | Constraints                                                       | Description                                        |
-| :---------------- | :------------- | :---------------------------------------------------------------- | :------------------------------------------------- |
-| `id`              | `UUID`         | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                        | Unique invoice identifier.                         |
-| `organization_id` | `UUID`         | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`     | Tenant ownership key.                              |
-| `customer_id`     | `UUID`         | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT`         | Target client billed.                              |
-| `project_id`      | `UUID`         | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT`          | Parent associated project.                         |
-| `invoice_number`  | `VARCHAR(50)`  | `NOT NULL`                                                        | Unique invoice code per tenant.                    |
-| `status`          | `VARCHAR(15)`  | `NOT NULL`, `CHECK (status IN ('draft', 'sent', 'paid', 'void'))` | Lifecycle state.                                   |
-| `issued_at`       | `TIMESTAMPTZ`  | `NULLABLE`                                                        | Timestamp when the invoice transitioned to 'sent'. |
-| `due_date`        | `DATE`         | `NULLABLE`                                                        | Payment due date.                                  |
-| `paid_at`         | `TIMESTAMPTZ`  | `NULLABLE`                                                        | Timestamp when payment was confirmed.              |
-| `created_at`      | `TIMESTAMPTZ`  | `NOT NULL`, `DEFAULT NOW()`                                       | Creation audit timestamp.                          |
-| `updated_at`      | `TIMESTAMPTZ`  | `NOT NULL`, `DEFAULT NOW()`                                       | Modification audit timestamp.                      |
+| Column            | PostgreSQL Type | Constraints                                                       | Description                                        |
+| :---------------- | :-------------- | :---------------------------------------------------------------- | :------------------------------------------------- |
+| `id`              | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                        | Unique invoice identifier.                         |
+| `organization_id` | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`     | Tenant ownership key.                              |
+| `customer_id`     | `UUID`          | `NOT NULL`, `REFERENCES customers(id) ON DELETE RESTRICT`         | Target client billed.                              |
+| `project_id`      | `UUID`          | `NOT NULL`, `REFERENCES projects(id) ON DELETE RESTRICT`          | Parent associated project.                         |
+| `invoice_number`  | `VARCHAR(50)`   | `NOT NULL`                                                        | Unique invoice code per tenant.                    |
+| `status`          | `VARCHAR(15)`   | `NOT NULL`, `CHECK (status IN ('draft', 'sent', 'paid', 'void'))` | Lifecycle state.                                   |
+| `issued_at`       | `TIMESTAMPTZ`   | `NULLABLE`                                                        | Timestamp when the invoice transitioned to 'sent'. |
+| `due_date`        | `DATE`          | `NULLABLE`                                                        | Payment due date.                                  |
+| `paid_at`         | `TIMESTAMPTZ`   | `NULLABLE`                                                        | Timestamp when payment was confirmed.              |
+| `created_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                       | Creation audit timestamp.                          |
+| `updated_at`      | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                       | Modification audit timestamp.                      |
 
 > **Composite Constraint:** `UNIQUE (organization_id, invoice_number)` guarantees unique invoice numbers per tenant organization.
-> **State Consistencia Check:** `Enforces valid timestamp combinations accross the invoice lifecycle:
+> **State Consistency Check:** `Enforces valid timestamp combinations across the invoice lifecycle:
 
 - `status = 'draft'` &rarr; `issued_at IS NULL AND paid_at IS NULL`
 - `status = 'sent'` &rarr; `issued_at IS NOT NULL AND paid_at IS NULL`
