@@ -54,7 +54,7 @@ flowchart TD
     end
 
     %% Global Interrupt pulling OUT of the active state
-    Active_Project_State -.->|"Changing status to\non_hold / cancelled / completed"| S12{{"Non-Active States:\nFilters tasks out of active queues & pauses updates"}}
+    Active_Project_State -.->|"Changing status to\non_hold / cancelled / completed"| S12{{"Non-Active States:\nFilters tasks out of active queues"}}
 
     %% Return path to Active State
     S12 ==>|"Reactivating state\n from on_hold / cancelled \n back to Active state"| Active_Project_State

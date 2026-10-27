@@ -1,8 +1,291 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [Citex]
+}
+
+enum MembershipRole {
+  owner
+  employee
+
+  @@map("membership_role")
+}
+
+enum ProjectPriority {
+  low
+  medium
+  high
+
+  @@map("project_priority")
+}
+
+enum ProjectStatus {
+  planning
+  scheduled
+  in_progress
+  on_hold
+  cancelled
+  completed
+
+  @@map("project_status")
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  cancelled
+  done
+
+  @@map("task_status")
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+
+  @@map("task_priority")
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  void
+
+  @@map("invoice_status")
+}
+
+enum BillableItemType {
+  task
+  expense
+  direct
+
+  @@map("billable_item_type")
+}
+
+model Organization {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships          OrganizationMembership[]
+  customers            Customer[]
+  projects             Project[]
+  tasks                Task[]
+  tasksAssignments     TaskAssignment[]
+  expenses             Expense[]
+  billableItems        BillableItem[]
+  billableItemPortions BillableItemPortion[]
+  invoices             Invoice[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @db.VarChar(150)
+  email        String   @db.Citext
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+
+  @@unique([email])
+  @@map("users")
+}
+
+model OrganizationMembership {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  name           String         @db.VarChar(150)
+  role           MembershipRole
+  isActive       Boolean        @default(true) @map("is_active")
+  note           String?
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects        Project[]
+  taskAssignments TaskAssignment[]
+
+  @@unique([organizationId, userId])
+  @@unique([organizationId, id])
+  @@index([userId, isActive])
+  @@map("organization_memberships")
+}
+
+model Customer {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String       @db.VarChar(150)
+  phoneNumber    String       @map("phone_number") @db.VarChar(30)
+  notes          String?
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  projects Project[]
+  invoices Invoice[]
+
+  @@unique([organizationId, phoneNumber])
+  @@unique([organizationId, id])
+  @@map("customers")
+}
+
+model Project {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String          @map("organization_id") @db.Uuid
+  customerId          String          @map("customer_id") @db.Uuid
+  managerMembershipId String          @map("manager_membership_id") @db.Uuid
+  name                String          @db.VarChar(150)
+  description         String?
+  priority            ProjectPriority
+  status              ProjectStatus
+  plannedStartDate    DateTime?       @map("planned_start_date") @db.Timestamptz(0)
+  plannedEndDate      DateTime?       @map("planned_end_date") @db.Timestamptz(0)
+  actualStartDate     DateTime?       @map("actual_start_date") @db.Timestamptz(0)
+  actualEndDate       DateTime?       @map("actual_end_date") @db.Timestamptz(0)
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization           @relation(fields: [organizationId], references: [id])
+  customer      Customer               @relation(fields: [organizationId, customerId], references: [organizationId, id])
+  manager       OrganizationMembership @relation(fields: [organizationId, managerMembershipId], references: [organizationId, id])
+  tasks         Task[]
+  expenses      Expense[]
+  billableItems BillableItem[]
+  invoices      Invoice[]
+
+  @@unique([organizationId, id])
+  @@map("projects")
+}
+
+model Task {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  projectId        String       @map("project_id") @db.Uuid
+  title            String       @db.VarChar(300)
+  description      String?
+  status           TaskStatus
+  priority         TaskPriority
+  laborCostInCents BigInt?      @map("labor_cost_in_cents")
+  dueDate          DateTime?    @map("due_date") @db.Timestamptz(0)
+  completedAt      DateTime?    @map("completed_at") @db.Timestamptz(0)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  project         Project          @relation(fields: [organizationId, projectId], references: [organizationId, id])
+  taskAssignments TaskAssignment[]
+  billableItems   BillableItem[]
+
+  @@unique([organizationId, projectId, id])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  taskId         String   @map("task_id") @db.Uuid
+  membershipId   String   @map("membership_id") @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization           Organization           @relation(fields: [organizationId], references: [id])
+  task                   Task                   @relation(fields: [organizationId, projectId, taskId], references: [organizationId, projectId, id])
+  organizationMembership OrganizationMembership @relation(fields: [organizationId, membershipId], references: [organizationId, id])
+
+  @@unique([organizationId, taskId, membershipId])
+  @@map("task_assignments")
+}
+
+model Expense {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  projectId           String   @map("project_id") @db.Uuid
+  materialCostInCents BigInt   @map("material_cost_in_cents")
+  incurredAt          DateTime @default(now()) @map("incurred_at") @db.Timestamptz(0)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  project       Project        @relation(fields: [organizationId, projectId], references: [organizationId, id])
+  billableItems BillableItem[]
+
+  @@unique([organizationId, projectId, id])
+  @@map("expenses")
+}
+
+model BillableItem {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String           @map("organization_id") @db.Uuid
+  projectId         String           @map("project_id") @db.Uuid
+  taskId            String?          @map("task_id") @db.Uuid
+  expenseId         String?          @map("expense_id") @db.Uuid
+  type              BillableItemType
+  description       String?
+  totalValueInCents BigInt           @map("total_value_in_cents")
+  isWrittenOff      Boolean          @default(false) @map("is_written_off")
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  project              Project               @relation(fields: [organizationId, projectId], references: [organizationId, id])
+  task                 Task?                 @relation(fields: [organizationId, projectId, taskId], references: [organizationId, projectId, id])
+  expense              Expense?              @relation(fields: [organizationId, projectId, expenseId], references: [organizationId, projectId, id])
+  billableItemPortions BillableItemPortion[]
+
+  @@unique([organizationId, id])
+  @@map("billable_items")
+}
+
+model Invoice {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  customerId     String        @map("customer_id") @db.Uuid
+  projectId      String        @map("project_id") @db.Uuid
+  invoiceNumber  String        @map("invoice_number") @db.VarChar(50)
+  status         InvoiceStatus
+  issuedAt       DateTime?     @map("issued_at") @db.Timestamptz(0)
+  dueDate        DateTime?     @map("due_date") @db.Timestamptz(0)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(0)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  customer             Customer              @relation(fields: [organizationId, customerId], references: [organizationId, id])
+  project              Project               @relation(fields: [organizationId, projectId], references: [organizationId, id])
+  billableItemPortions BillableItemPortion[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@unique([organizationId, id])
+  @@map("invoices")
+}
+
+model BillableItemPortion {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  billableItemId String   @map("billable_item_id") @db.Uuid
+  invoiceId      String   @map("invoice_id") @db.Uuid
+  amountInCents  BigInt   @map("amount_in_cents")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  billableItem BillableItem @relation(fields: [organizationId, billableItemId], references: [organizationId, id])
+  invoice      Invoice      @relation(fields: [organizationId, invoiceId], references: [organizationId, id])
 }
