@@ -4,11 +4,12 @@ This document defines the REST API contract for the platform, detailing endpoint
 
 ## Conventions & Global Constraints
 
-* **Base URL:** `api/v1`
-* **Content-Type:** `application/json`
-* **Monetary Values:** Represented as *integer cents* (e.g., `12500` = `$125.00`).
-* **Pagination:** List endpoints accept `limit` and `cursor` query parameters and return a wrapped `{ data: [...], next_cursor }` structure.
-* **Error Format:** Standardized error responses follow this structure:
+- **Base URL:** `api/v1`
+- **Content-Type:** `application/json`
+- **Monetary Values:** Represented as _integer cents_ (e.g., `12500` = `$125.00`).
+- **Pagination:** List endpoints accept `limit` and `cursor` query parameters and return a wrapped `{ data: [...], next_cursor }` structure.
+- **Error Format:** Standardized error responses follow this structure:
+
 ```json
 {
   "error": {
@@ -29,16 +30,17 @@ This document defines the REST API contract for the platform, detailing endpoint
 
 These routes handle global user identity creation and session management.
 
-| Method | Path | Purpose | Auth Requirement |
-| :--- | :--- | :--- | :--- |
-| **POST** | `/auth/register` | Creates a global user credential profile. | Public |
-| **POST** | `/auth/login` | Authenticates user globally and issues session cookie. | Public |
-| **POST** | `/auth/logout` | Destroys current session cookie. | Authenticated Session |
-| **GET** | `/auth/me` | Returns the currently authenticated global user profile. | Authenticated Session |
+| Method   | Path             | Purpose                                                  | Auth Requirement      |
+| :------- | :--------------- | :------------------------------------------------------- | :-------------------- |
+| **POST** | `/auth/register` | Creates a global user credential profile.                | Public                |
+| **POST** | `/auth/login`    | Authenticates user globally and issues session cookie.   | Public                |
+| **POST** | `/auth/logout`   | Destroys current session cookie.                         | Authenticated Session |
+| **GET**  | `/auth/me`       | Returns the currently authenticated global user profile. | Authenticated Session |
 
 #### POST `/auth/login`
 
 **Request Body:**
+
 ```json
 {
   "email": "jane@example.com",
@@ -46,7 +48,8 @@ These routes handle global user identity creation and session management.
 }
 ```
 
-**Success Response (200 OK):** *(Sets HTTP-Only Cookie)*
+**Success Response (200 OK):** _(Sets HTTP-Only Cookie)_
+
 ```json
 {
   "user": {
@@ -56,20 +59,19 @@ These routes handle global user identity creation and session management.
   }
 }
 ```
+
 ---
 
 ## 2. User-Scoped Workspace Routing
 
 These routes operate on the authenticated user's global session to manage workspace membership and organization creation before a specific tenant context is locked in.
 
-| Method | Path | Purpose | Auth Requirement |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/organizations` | Lists all organizations the user has active memberships (with roles). | Authenticated Session |
-| **POST** | `/organizations` | Creates a new organization and assigns the user as owner. | Authenticated Session |
-| **PATCH** | `/organizations/:id` | Updates organization details (Name, settings, etc.). | Authenticated Session (Owner Role) |
-| **DELETE** | `/organizations/:id` | Deletes an organization workspace (fails if dependent records exist). | Authenticated Session (Owner Role) |
-
-
+| Method     | Path                 | Purpose                                                                                             | Auth Requirement                   |
+| :--------- | :------------------- | :-------------------------------------------------------------------------------------------------- | :--------------------------------- |
+| **GET**    | `/organizations`     | Lists all organizations the user has active memberships (with roles).                               | Authenticated Session              |
+| **POST**   | `/organizations`     | Creates a new organization and assigns the user as owner.                                           | Authenticated Session              |
+| **PATCH**  | `/organizations/:id` | Updates organization details (name, settings, etc.).                                                | Authenticated Session (Owner Role) |
+| **DELETE** | `/organizations/:id` | Permanently hard-deletes an organization workspace. Fails with an error if dependent records exist. | Authenticated Session (Owner Role) |
 
 ---
 
@@ -79,26 +81,27 @@ All routes in this section require both an authenticated session cookie **AND** 
 
 ### Organization Membership Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- |
-| **GET**	| `/members` | Lists all active members and their roles in the current tenant workspace. |
-| **POST**	| `/members` | Invites or add an existing global user account to the current tenant workspace. |
-| **PATCH**	| `/members/:id` | Updates a member's role, name, notes or status. |
-| **DELETE**	| `/members/:id` | Revokes a user's membership access from the workspace. |
+| Method     | Path           | Purpose                                                                                                                            |
+| :--------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| **GET**    | `/members`     | Lists or filters all members and their roles in the current tenant workspace.                                                      |
+| **POST**   | `/members`     | Add an existing global user account to the current tenant workspace.                                                               |
+| **PATCH**  | `/members/:id` | Updates a membership details, role or active status .                                                                              |
+| **DELETE** | `/members/:id` | Permanently hard-deletes the membership record. Fails with an error if any historical task assignments or dependent records exist. |
 
 ### Customers Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/customers` | Lists or filters organization clients (supports pagination). |
-| **POST** | `/customers` | Creates a new client profile. |
-| **GET** | `/customers/:id` | Gets detailed client profile by ID. |
-| **PATCH** | `/customers/:id` | Updates client details or active status. |
-| **DELETE** | `/customers/:id` | Deletes a client (restricted if referenced by projects or invoices). |
+| Method     | Path             | Purpose                                                                                                 |
+| :--------- | :--------------- | :------------------------------------------------------------------------------------------------------ |
+| **GET**    | `/customers`     | Lists or filters organization clients.                                                                  |
+| **POST**   | `/customers`     | Creates a new client profile.                                                                           |
+| **GET**    | `/customers/:id` | Gets detailed client profile by ID.                                                                     |
+| **PATCH**  | `/customers/:id` | Updates client details or is_active state.                                                              |
+| **DELETE** | `/customers/:id` | Permanently hard-deletes the client profile. Fails with an error if referenced by projects or invoices. |
 
 #### POST `customers`
 
 **Request Body:**
+
 ```json
 {
   "name": "Acme Industrial Corp",
@@ -108,6 +111,7 @@ All routes in this section require both an authenticated session cookie **AND** 
 ```
 
 **Success Response (201 Created):**
+
 ```json
 {
   "id": "f8c3bbd0-9a3c-4a37-889d-721245fa8b32",
@@ -120,57 +124,57 @@ All routes in this section require both an authenticated session cookie **AND** 
   "updated_at": "2026-10-01T12:00:00Z"
 }
 ```
+
 #### Permissive Field Validation
+
 **customers.phone_number:** Validated via `^\+?[0-9\s\-()]+$`. Permissive of spaces, dashes, and parenthesis to optimize user experience. The API sanitizes this input to strict E.164 format.
 
 ### Projects Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/projects` | Lists projects for the active tenant. |
-| **POST** | `/projects` | Creates a new project container. |
-| **GET** | `/projects/:id` | Get project details. |
-| **PATCH** | `/projects/:id` | Updates project information. |
-| **DELETE** | `/projects/:id` | Deletes a project container (restricted if referenced by financial records). |
+| Method     | Path                   | Purpose                                                                                                   |
+| :--------- | :--------------------- | :-------------------------------------------------------------------------------------------------------- |
+| **GET**    | `/projects`            | Lists or filters projects in the current tenant workspace.                                                |
+| **POST**   | `/projects`            | Creates a new project container.                                                                          |
+| **GET**    | `/projects/:id`        | Get project details.                                                                                      |
+| **PATCH**  | `/projects/:id`        | Updates general details (name, description, priority, customer, manager, planned dates).                  |
+| **POST**   | `/projects/:id/status` | Handles controlled project lifecycle transitions with validation checks.                                  |
+| **DELETE** | `/projects/:id`        | Permanently deletes the project. Fails with an error if referenced by billable items, tasks, or expenses. |
 
 ### Tasks & Task Assignments Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/projects/:id/tasks` | Lists tasks under a specific project. |
-| **POST** | `/projects/:id/tasks` | Creates a new task unit. |
-| **PATCH** | `/tasks/:id` | Updates task details. |
-| **DELETE** |  `/tasks/:id` | Deletes a task unit (restrict if referenced by a billable item). |
-| **POST** | `/tasks/:id/assignments` | Assigns a workspace user to a task. |
-| **DELETE** | `/assignments/:assignmentId` | Removes a task assignment to an user. |
+| Method     | Path                         | Purpose                                                                                       |
+| :--------- | :--------------------------- | :-------------------------------------------------------------------------------------------- |
+| **GET**    | `/projects/:id/tasks`        | Lists and filters tasks under a specific project.                                             |
+| **POST**   | `/projects/:id/tasks`        | Creates a new task unit.                                                                      |
+| **PATCH**  | `/tasks/:id`                 | Updates task details including status, priority, and completion timestamps.                   |
+| **DELETE** | `/tasks/:id`                 | Permanently deletes a task unit. Fails if referenced by a task assignment or a billable item. |
+| **POST**   | `/tasks/:id/assignments`     | Assigns a workspace user to a task.                                                           |
+| **DELETE** | `/assignments/:assignmentId` | Removes a task assignment to an user by setting its `unassigned_at` timestamp.                |
 
 ### Expenses Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/projects/:id/expenses` | Lists operational and material costs incurred on a project. |
-| **POST** | `/projects/:id/expenses` | Logs a direct project expense. |
-| **DELETE** | `/expenses/:id` | Removes an incorrectly logged expense (restrict if referenced by a billable item). |
+| Method     | Path                     | Purpose                                                                           |
+| :--------- | :----------------------- | :-------------------------------------------------------------------------------- |
+| **GET**    | `/projects/:id/expenses` | Lists and filters operational and material costs incurred on a project.           |
+| **POST**   | `/projects/:id/expenses` | Logs a direct project expense.                                                    |
+| **DELETE** | `/expenses/:id`          | Removes an incorrectly logged expense. Restrict if referenced by a billable item. |
 
 ### Billable Items Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/projects/:id/billable-items` | Lists billable items linked to a project. |
-| **POST** | `/projects/:id/billable-items` | Generates a manual or source-linked billable charge. |
-| **POST** | `/billable-items/:id/write-off` | Marks a billable item as written off. |
+| Method    | Path                           | Purpose                                                         |
+| :-------- | :----------------------------- | :-------------------------------------------------------------- |
+| **GET**   | `/projects/:id/billable-items` | Lists and filters billable items linked to a project.           |
+| **POST**  | `/projects/:id/billable-items` | Generates a manual or source-linked billable charge.            |
+| **PATCH** | `/billable-items/:id`          | Updates a billable item description or marks it as written-off. |
 
-### Invoices Modules
+### Invoices & Portions Module
 
-| Method | Path | Purpose |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/invoices` | Lists invoices issued to customers. |
-| **POST** | `/invoices` | Creates a new `draft` invoice shell (customer, project, due date). |
-| **GET** | `/invoices/:id` | Shows invoice details, line items (portions) and current lifecycle state. |
-| **PATCH** | `/invoices/:id` | Updates invoice metadata (due_date, invoice_number, billing customer) while in `draft`. |
-| **DELETE** | `/invoices/:id` | Deletes a `draft` invoice. |
-| **POST** | `/invoices/:id/portions` | Adds a billable item portion to a `draft` invoice. |
-| **DELETE** | `/billable-item-portions/:id` | Removes a portion to a `draft` invoice (restores unbilled balance). |
-| **POST** | `/invoices/:id/send` |	Transitions invoice state from `draft` to `sent` (`issued_at` populated). |
-| **POST** | `/invoices/:id/pay` |	Transitions invoice state from `sent` to `paid` (`paid_at` populated). |
-| **POST** | `/invoices/:id/void` |	Cancels (void) an invoice for financial audit preservation. |
+| Method     | Path                          | Purpose                                                                                                                     |
+| :--------- | :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| **GET**    | `/invoices`                   | Lists and filters invoices issued to customers.                                                                             |
+| **POST**   | `/invoices`                   | Creates a new `draft` invoice shell with initial data.                                                                      |
+| **GET**    | `/invoices/:id`               | Shows invoice data, line items (portions) and current lifecycle state.                                                      |
+| **PATCH**  | `/invoices/:id`               | Updates invoice metadata (due_date, invoice_number, billing customer) while in `draft` or transitions the lifecycle status. |
+| **DELETE** | `/invoices/:id`               | Permanently hard-deletes a `draft` invoice. Fails if referenced by one or more billable item portions.                      |
+| **POST**   | `/invoices/:id/portions`      | Adds a billable item portion to a `draft` invoice.                                                                          |
+| **DELETE** | `/billable-item-portions/:id` | Permanently hard-deletes a portion. Fails if the parent invoice status is not `draft`.                                      |
