@@ -40,6 +40,15 @@ export default defineConfig([
     }
   },
 
+  // Disable no-unpublished-import rule for Prisma api config file
+  // Solves: Prisma's `prisma/config` import incorrectly flagged as unpublished.
+  {
+    files: ['apps/api/prisma7.config.ts'],
+    rules: {
+      'n/no-unpublished-import': 'off'
+    }
+  },
+
   // Prettier formatting
   eslintConfigPrettier
 ])
