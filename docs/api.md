@@ -175,6 +175,6 @@ All routes in this section require both an authenticated session cookie **AND** 
 | **POST**   | `/invoices`                   | Creates a new `draft` invoice shell with initial data.                                                                      |
 | **GET**    | `/invoices/:id`               | Shows invoice data, line items (portions) and current lifecycle state.                                                      |
 | **PATCH**  | `/invoices/:id`               | Updates invoice metadata (due_date, invoice_number, billing customer) while in `draft` or transitions the lifecycle status. |
-| **DELETE** | `/invoices/:id`               | Permanently hard-deletes a `draft` invoice. Fails if referenced by one or more billable item portions.                      |
+| **DELETE** | `/invoices/:id`               | Permanently hard-deletes a `draft` invoice and its portions atomically. Invoices in any other status cannot be deleted.     |
 | **POST**   | `/invoices/:id/portions`      | Adds a billable item portion to a `draft` invoice.                                                                          |
 | **DELETE** | `/billable-item-portions/:id` | Permanently hard-deletes a portion. Fails if the parent invoice status is not `draft`.                                      |

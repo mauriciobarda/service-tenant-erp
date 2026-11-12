@@ -7,8 +7,8 @@ A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-
 - **Organization & Access Control:** Multi-tenant architecture isolating data by organization, supporting user authentication and role-based permission.
 - **Client and Project Management:** Customer directory, project lifecycles & status pipelines.
 - **Task and Resource Allocation:** Task breakdown within projects, priority levels, and employee assignment workflows.
-- **Finantial Operations:** Invoice generation, expense logging, and real-time project profitability (`Invoices-Expenses`).
-- **Reporting and Analytics:** Ovierview dashboard displaying active project health, overdue task alerts, and financial summaries.
+- **Financial Operations:** Invoice generation, expense logging, and real-time project profitability (`Invoices-Expenses`).
+- **Reporting and Analytics:** Overview dashboard displaying active project health, overdue task alerts, and financial summaries.
 
 ## Tech Stack
 
@@ -21,16 +21,19 @@ A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-
 ## Setup Instructions
 
 1. **Initialize environment configuration files:**
+
    ```bash
    pnpm run setup-env
    ```
 
 2. **Install dependencies across the workspace:**
+
    ```bash
    pnpm install
    ```
 
 3. **Start the localized database container:**
+
    ```bash
    docker compose up -d
    ```

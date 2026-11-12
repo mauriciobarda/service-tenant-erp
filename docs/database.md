@@ -14,15 +14,15 @@ This document specifies the physical data relationships and core implementation 
 
 - **Tenant Protection:** Enforces `ON DELETE RESTRICT` on the `organizations` database to prevent cascading data loss.
 
-- **Database-Level Isolation Boundaries:** To prevent cross-tenant data leaks, all dependant relational tables must implement **Composite Foreign Keys**. Downstream child tables must reference parent tables using a compound tuples like `FOREING KEY (organization_id, referenced_id) REFERENCES parent_table(organization_id, id)`. This ensures records can never reference entities belonging to a different tenant.
+- **Database-Level Isolation Boundaries:** To prevent cross-tenant data leaks, all dependent relational tables must implement **Composite Foreign Keys**. Downstream child tables must reference parent tables using a composite tuple including all common parent keys like `FOREIGN KEY (organization_id, parent_project_id, referenced_id) REFERENCES parent_table(organization_id, parent_project_id, id)`. This ensures records can never reference entities belonging to a different tenant or parent entity container.
 
 ### Financial Integrity & Audit Trails
 
 - **Audit Preservation:** Invoices in `sent`, `paid` or `void` status are never physically deleted. Canceled transactions switch to a `void` status to maintain standard accounting history.
 
-- **Decoupled Pricing:** Billable Items stores an independent mutable pricing. Future modifications to the source task o expense do not mutate existing generated Items.
+- **Decoupled Pricing:** Billable Items stores an independent mutable pricing. Future modifications to the source task or expense do not mutate existing generated Items.
 
-- **Inmutable Portions:** Once created, a billable portion allocated amount is frozen. This enables safe, dynamic recalculation of remaining unbilled balances. Portions can only be deleted when the invoice container status is `draft`.
+- **Immutable Portions:** Once created, a billable portion allocated amount is frozen. This enables safe, dynamic recalculation of remaining unbilled balances. Portions can only be deleted when the invoice container status is `draft`.
 
 ### Project State Management
 
@@ -39,11 +39,11 @@ This document specifies the physical data relationships and core implementation 
 
 ### Modeling Conventions
 
-- **PostgreSQL Native Engine:** Schema targets PostgreSQL natively, leveraging explicit foreing keys and optimized composite indexes for tenant-scoped lookups.
+- **PostgreSQL Native Engine:** Schema targets PostgreSQL natively, leveraging explicit foreign keys and optimized composite indexes for tenant-scoped lookups.
 
 - **Physical Pluralization:** Maps documentation entities (singular) to plural lowercase PostgreSQL tables (`users`, `projects`) to prevent SQL reserved keyword collisions.
 
-- **Diagram Optimization:** Ommits operational metadata (`created_at`, `updated_at`, `archived_at`, `is_active`, `notes`, `description`, `organization_id`) from visual ERD diagrams to keep the focus strictly on core business domain boundaries.
+- **Diagram Optimization:** Omits operational metadata (`created_at`, `updated_at`, `archived_at`, `is_active`, `notes`, `description`, `organization_id`) from visual ERD diagrams to keep the focus strictly on core business domain boundaries.
 
 ## Entity-Relationship Diagram (ERD)
 
@@ -166,7 +166,7 @@ erDiagram
 
 ```
 
-## Data Dictionay & Schema Specifications
+## Data Dictionary & Schema Specifications
 
 _Note: All schema tables must implement the **Database-Level Isolation Boundaries** (Composite Foreign Keys) defined in the Core Decisions section._
 
@@ -191,7 +191,7 @@ Root tenant entity defining isolation boundaries.
 | :------------ | :-------------- | :----------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
 | `id`          | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                         | Unique tenant identifier.                                                                   |
 | `name`        | `VARCHAR(100)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                       | Legal or display name of the business. Enforces a minimum length of 2 printable characters. |
-| `slug`        | `VARCHAR(100)`  | `NOT NULL`, `UNIQUE`, `CHECK(slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$')` | URL-safe, human-recognizible unique identifier.                                             |
+| `slug`        | `VARCHAR(100)`  | `NOT NULL`, `UNIQUE`, `CHECK(slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$')` | URL-safe, human-recognizable unique identifier.                                             |
 | `description` | `TEXT`          | `NULLABLE`                                                         | Optional summary or overview of the organization.                                           |
 | `created_at`  | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                        | Creation audit timestamp.                                                                   |
 | `updated_at`  | `TIMESTAMPTZ`   | `NOT NULL`                                                         | Modification audit timestamp, maintained by the application on each update.                 |
@@ -207,7 +207,7 @@ Junction entity controlling isolated workspace membership and access role.
 | `user_id`         | `UUID`           | `NOT NULL`, `REFERENCES users(id) ON DELETE RESTRICT`         | Associated global user account.                                                                           |
 | `name`            | `VARCHAR(150)`   | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                  | Workspace-specific display name for the user profile.                                                     |
 | `role`            | `MembershipRole` | `NOT NULL`                                                    | Workspace permission level. Implemented as ENUM('owner', 'employee').                                     |
-| `is_active`       | `BOOLEAN`        | `NOT NULL`, `DEFAULT TRUE`                                    | Operational lifecycle flag that governs member workspace access and elegibility for new task assignments. |
+| `is_active`       | `BOOLEAN`        | `NOT NULL`, `DEFAULT TRUE`                                    | Operational lifecycle flag that governs member workspace access and eligibility for new task assignments. |
 | `notes`           | `TEXT`           | `NULLABLE`                                                    | Internal workspace administrative notes regarding this profile.                                           |
 | `created_at`      | `TIMESTAMPTZ`    | `NOT NULL`, `DEFAULT NOW()`                                   | Creation audit timestamp.                                                                                 |
 | `updated_at`      | `TIMESTAMPTZ`    | `NOT NULL`                                                    | Modification audit timestamp, maintained by the application on each update.                               |
@@ -239,8 +239,8 @@ Primary operation container for tasks, costs, and invoicing.
 | :---------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
 | `id`                    | `UUID`            | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                                     | Unique project identifier.                                                                                         |
 | `organization_id`       | `UUID`            | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                                  | Tenant ownership key.                                                                                              |
-| `customer_id`           | `UUID`            | `NOT NULL`, `FOREING KEY (organization_id, customer_id) REFERENCES customers(organization_id, id) ON DELETE RESTRICT`                          | External client sponsoring the project.                                                                            |
-| `manager_membership_id` | `UUID`            | `NOT NULL`, `FOREING KEY (organization_id, manager_membership_id) REFERENCES organization_memberships(organization_id, id) ON DELETE RESTRICT` | Designated internal manager (Owner or Employee).                                                                   |
+| `customer_id`           | `UUID`            | `NOT NULL`, `FOREIGN KEY (organization_id, customer_id) REFERENCES customers(organization_id, id) ON DELETE RESTRICT`                          | External client sponsoring the project.                                                                            |
+| `manager_membership_id` | `UUID`            | `NOT NULL`, `FOREIGN KEY (organization_id, manager_membership_id) REFERENCES organization_memberships(organization_id, id) ON DELETE RESTRICT` | Designated internal manager (Owner or Employee).                                                                   |
 | `name`                  | `VARCHAR(150)`    | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                                                                                                   | Project title. Ensures descriptive names.                                                                          |
 | `description`           | `TEXT`            | `NULLABLE`                                                                                                                                     | Additional information on project scope, objectives and workflow.                                                  |
 | `priority`              | `ProjectPriority` | `NOT NULL`                                                                                                                                     | Business urgency level in completing the project. Implemented as ENUM('low', 'medium', 'high').                    |
@@ -258,6 +258,7 @@ Primary operation container for tasks, costs, and invoicing.
 - `status = 'scheduled'` &rarr; `planned_start HAS VALUE AND actual_start/end ARE NULL`
 - `status = 'in_progress'` &rarr; `actual_start HAS VALUE AND actual_end IS NULL`
 - `status = 'completed'` &rarr; `actual_end HAS VALUE`
+- `status = 'on_hold'` OR `status = 'cancelled'` &rarr; `actual_end IS NULL`
 
 ### 6. `tasks`
 
@@ -267,7 +268,7 @@ Work unit, may convert to billable items.
 | :-------------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
 | `id`                  | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                           | Unique task identifier.                                                                |
 | `organization_id`     | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                        | Tenant ownership key.                                                                  |
-| `project_id`          | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT ` | Parent project container.                                                              |
+| `project_id`          | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT ` | Parent project container.                                                              |
 | `title`               | `VARCHAR(300)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(title)) >= 2)`                                                                        | Short summary of the work unit.                                                        |
 | `description`         | `TEXT`          | `NULLABLE`                                                                                                           | Task execution details.                                                                |
 | `status`              | `TaskStatus`    | `NOT NULL`                                                                                                           | Task execution state. Implemented as ENUM('todo', 'in_progress', 'cancelled', 'done'). |
@@ -280,22 +281,22 @@ Work unit, may convert to billable items.
 
 ### 7. `task_assignments`
 
-Temporal junction table linking users to tasks. Operates on an append-only pattern: assignment records are never updated or mutated after creation; excepet for closing via setting its unassigned_at field.
+Temporal junction table linking users to tasks. Operates on an append-only pattern: assignment records are never updated or mutated after creation; except for closing via setting its unassigned_at field.
 
 | Column            | PostgreSQL Type | Constraints                                                                                                                            | Description                              |
 | :---------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
 | `id`              | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                             | Unique assignment identifier.            |
 | `organization_id` | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                          | Tenant ownership key.                    |
-| `task_id`         | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, project_id, task_id) REFERENCES tasks(organization_id, project_id, id) ON DELETE RESTRICT`  | Assigned task.                           |
-| `membership_id`   | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, membership_id) REFERENCES organization_memberships(organization_id, id) ON DELETE RESTRICT` | Assigned user. Immutable after creation. |
-| `project_id`      | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT `                   | Parent project container.                |
+| `task_id`         | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, project_id, task_id) REFERENCES tasks(organization_id, project_id, id) ON DELETE RESTRICT`  | Assigned task.                           |
+| `membership_id`   | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, membership_id) REFERENCES organization_memberships(organization_id, id) ON DELETE RESTRICT` | Assigned user. Immutable after creation. |
+| `project_id`      | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT `                   | Parent project container.                |
 
 | `assigned_at` | `TIMESTAMPTZ` | `NOT NULL`, `DEFAULT NOW()` | Timestamp when the assignment was created. |
 | `unassigned_at` | `TIMESTAMPTZ` | `NULLABLE` | Timestamp when the user was unassigned (NULL means currently assigned). |
 
-> **Composite Constraint:** `UNIQUE (organization_id, task_id, membership_id) WHERE unassigned_at IS NULL` guarantees that each user can have one active assignment per task at any given time.
+> **Composite Constraint:** `CREATE UNIQUE INDEX idx_task_assignment_unique_active_per_member_task ON task_assignments (organization_id, task_id, membership_id) WHERE unassigned_at IS NULL` guarantees that each user can have one active assignment per task at any given time.
 
-> **Immutability Constraint:** `Once an assignment is closed (unassigned_at is set) the record becomes read-only. Reassigning a user later requires creating a new assingment record.`
+> **Immutability Constraint:** Once an assignment is closed (`unassigned_at` is set) the record becomes read-only. Reassigning a user later requires creating a new assignment record.
 
 ### 8. `expenses`
 
@@ -307,22 +308,22 @@ Direct project-level cost incurred during operation.
 | `organization_id`        | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                       | Tenant ownership key.                                                       |
 | `project_id`             | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT` | Parent project container.                                                   |
 | `material_cost_in_cents` | `BIGINT`        | `NOT NULL`, `CHECK (material_cost_in_cents >= 0)`                                                                   | Cost of physical items or third-party tools.                                |
-| `incurred_at`            | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                         | Timestamp when the expense ocurred.                                         |
+| `incurred_at`            | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                         | Timestamp when the expense occurred.                                        |
 | `created_at`             | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                         | Creation audit timestamp.                                                   |
 | `updated_at`             | `TIMESTAMPTZ`   | `NOT NULL`                                                                                                          | Modification audit timestamp, maintained by the application on each update. |
 
 ### 9. `billable_items`
 
-Financial charge generated for client billing. Can be split across multiple invoicing.
+Financial charge generated for client billing. Can be split across multiple invoices.
 
 | Column                 | PostgreSQL Type    | Constraints                                                                                                                                 | Description                                                                                                                     |
 | :--------------------- | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------ |
 | `id`                   | `UUID`             | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                                  | Unique billable item identifier.                                                                                                |
 | `description`          | `TEXT`             | `NULLABLE`                                                                                                                                  | Human-readable title or narrative of the charge. Snapshotted from tasks/expenses or entered manually for direct charges.        |
 | `organization_id`      | `UUID`             | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                               | Tenant ownership key.                                                                                                           |
-| `project_id`           | `UUID`             | `NOT NULL`, `FOREING KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT`                         | Parent project container.                                                                                                       |
-| `task_id`              | `UUID`             | `NULLABLE`, `FOREING KEY (organization_id, project_id, task_id) REFERENCES tasks(organization_id, project_id, id) ON DELETE RESTRICT`       | Source task reference.                                                                                                          |
-| `expense_id`           | `UUID`             | `NULLABLE`, `FOREING KEY (organization_id, project_id, expense_id) REFERENCES expenses(organization_id, project_id, id) ON DELETE RESTRICT` | Source expense reference.                                                                                                       |
+| `project_id`           | `UUID`             | `NOT NULL`, `FOREIGN KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT`                         | Parent project container.                                                                                                       |
+| `task_id`              | `UUID`             | `NULLABLE`, `FOREIGN KEY (organization_id, project_id, task_id) REFERENCES tasks(organization_id, project_id, id) ON DELETE RESTRICT`       | Source task reference.                                                                                                          |
+| `expense_id`           | `UUID`             | `NULLABLE`, `FOREIGN KEY (organization_id, project_id, expense_id) REFERENCES expenses(organization_id, project_id, id) ON DELETE RESTRICT` | Source expense reference.                                                                                                       |
 | `type`                 | `BillableItemType` | `NOT NULL`                                                                                                                                  | Classification of the billable item validated against its source reference. Implemented as ENUM('task', 'expense', 'direct').   |
 | `total_value_in_cents` | `BIGINT`           | `NOT NULL`, `CHECK(total_value_in_cents >= 0)`                                                                                              | Amount to be charged to the client.                                                                                             |
 | `is_written_off`       | `BOOLEAN`          | `NOT NULL`, `DEFAULT FALSE`                                                                                                                 | Status flag marking a billing attempt as cancelled or written off, allowing a new billable item to be generated for the source. |
@@ -333,9 +334,9 @@ Financial charge generated for client billing. Can be split across multiple invo
 
 > **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_task ON billable_items (task_id) WHERE is_written_off = FALSE AND task_id IS NOT NULL` ensures a task can only have one active non-written-off billable item at a time.
 
-> **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_expense ON billable_items (expense_id) WHERE is_written_off = FALSE AND expense_id IS NOT NULL` ensures a expense can only have one active non-written-off billable item at a time.
+> **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_expense ON billable_items (expense_id) WHERE is_written_off = FALSE AND expense_id IS NOT NULL` ensures an expense can only have one active non-written-off billable item at a time.
 
-> **Data Coherence Constraint:** `CHECK (type = 'task' AND task_id IS NOT NULL AND expense_id IS NULL) OR (type = 'expense' AND task_id IS NULL AND expense_id IS NOT NULL) OR (type = 'direct' AND task_id IS NULL AND expense_id IS NULL)` enforces that the `type` field is consistent with the source reference columns.
+> **Data Coherence Constraint:** `CHECK ((type = 'task' AND task_id IS NOT NULL AND expense_id IS NULL) OR (type = 'expense' AND task_id IS NULL AND expense_id IS NOT NULL) OR (type = 'direct' AND task_id IS NULL AND expense_id IS NULL))` enforces that the `type` field is consistent with the source reference columns.
 
 ### 10. `invoices`
 
@@ -345,8 +346,8 @@ Formal billing document issued to customers.
 | :---------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
 | `id`              | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                            | Unique invoice identifier.                                                                                 |
 | `organization_id` | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                         | Tenant ownership key.                                                                                      |
-| `customer_id`     | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, customer_id) REFERENCES customers(organization_id, id) ON DELETE RESTRICT` | Target client billed.                                                                                      |
-| `project_id`      | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT`   | Parent associated project.                                                                                 |
+| `customer_id`     | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, customer_id) REFERENCES customers(organization_id, id) ON DELETE RESTRICT` | Target client billed.                                                                                      |
+| `project_id`      | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, project_id) REFERENCES projects(organization_id, id) ON DELETE RESTRICT`   | Parent associated project.                                                                                 |
 | `invoice_number`  | `VARCHAR(50)`   | `NOT NULL`                                                                                                            | Unique invoice code per tenant. Autogenerated by the backend upon creation but fully editable via the API. |
 | `status`          | `InvoiceStatus` | `NOT NULL`                                                                                                            | Lifecycle state. Implemented as ENUM('draft', 'sent', 'paid', 'void').                                     |
 | `issued_at`       | `TIMESTAMPTZ`   | `NULLABLE`                                                                                                            | Timestamp when the invoice was sent.                                                                       |
@@ -357,7 +358,7 @@ Formal billing document issued to customers.
 
 > **Composite Constraint:** `UNIQUE (organization_id, invoice_number)` guarantees unique invoice numbers per tenant organization.
 
-> **State Consistency Check:** `Enforces valid timestamp combinations across the invoice lifecycle:
+> **State Consistency Check:** Enforces valid timestamp combinations across the invoice lifecycle:
 
 - `status = 'draft'` &rarr; `issued_at IS NULL AND paid_at IS NULL`
 - `status = 'sent'` &rarr; `issued_at IS NOT NULL AND paid_at IS NULL`
@@ -368,15 +369,15 @@ Formal billing document issued to customers.
 
 Line-item splits for billing. Links a specific dollar amount of a billable item to a specific invoice.
 
-| Column             | PostgreSQL Type | Constraints                                                                                                                      | Description                                                                 |
-| :----------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| `id`               | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                       | Unique portion identifier.                                                  |
-| `organization_id`  | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                    | Tenant ownership key.                                                       |
-| `billable_item_id` | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, billabile_item_id) REFERENCES billable_items(organization_id, id) ON DELETE RESTRICT` | Parent billable item.                                                       |
-| `invoice_id`       | `UUID`          | `NOT NULL`, `FOREING KEY (organization_id, invoice_id) REFERENCES invoices(organization_id, id) ON DELETE RESTRICT`              | Target invoice record.                                                      |
-| `amount_in_cents`  | `BIGINT`        | `NOT NULL`, `CHECK(amount_in_cents > 0)`                                                                                         | Exact amount allocated to the target invoice.                               |
-| `created_at`       | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                      | Creation audit timestamp.                                                   |
-| `updated_at`       | `TIMESTAMPTZ`   | `NOT NULL`                                                                                                                       | Modification audit timestamp, maintained by the application on each update. |
+| Column             | PostgreSQL Type | Constraints                                                                                                                     | Description                                                                 |
+| :----------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
+| `id`               | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                      | Unique portion identifier.                                                  |
+| `organization_id`  | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                   | Tenant ownership key.                                                       |
+| `billable_item_id` | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, billable_item_id) REFERENCES billable_items(organization_id, id) ON DELETE RESTRICT` | Parent billable item.                                                       |
+| `invoice_id`       | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, invoice_id) REFERENCES invoices(organization_id, id) ON DELETE RESTRICT`             | Target invoice record.                                                      |
+| `amount_in_cents`  | `BIGINT`        | `NOT NULL`, `CHECK(amount_in_cents > 0)`                                                                                        | Exact amount allocated to the target invoice.                               |
+| `created_at`       | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                     | Creation audit timestamp.                                                   |
+| `updated_at`       | `TIMESTAMPTZ`   | `NOT NULL`                                                                                                                      | Modification audit timestamp, maintained by the application on each update. |
 
 > **Business Invariant (Use Case Layer/Trigger):** `SUM(amount_in_cents)` across all active (non-void invoice) portions belonging to a single `billable_item_id` must not exceed `billable_items.total_value_in_cents`.
 

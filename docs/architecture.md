@@ -2,10 +2,9 @@
 
 This document defines the **technical architecture**, **operational layers**, **execution flow**, **directory organization**, and **data isolation mechanisms** for the Service Tenant ERP platform. It serves as the engineering blueprint for the platform's execution core.
 
-
 ## HTTP Requests Lifecycle & Backend Layer Architecture
 
-The backend engine processes incoming requests thought a sequence of **decoupled layers**. Each layer has a singular responsibility and can only communicate with the layer beneath it.
+The backend engine processes incoming requests through a sequence of **decoupled layers**. Each layer has a singular responsibility and can only communicate with the layer beneath it.
 
 The application adopts a **Clean Request Pipeline**, consisting of a **Infrastructural Middleware Chain** feeding into a **Pragmatic 2-Layer Model** (Controller &rarr; Use Case). This design decouples HTTP transport mechanics and multi-tenant routing from domain business while keeping data access straightforward via Prisma ORM.
 
@@ -36,12 +35,12 @@ flowchart TD
             - Lifecycle State Changes
             - Workflow Rules
             - Data Mutations"]
-            
+
             PrismaEngine["Prisma Client Engine
             - Native SQL Generation
             - Isolated Transactions
             - Type-Safe Relational Data Mapping"]
-            
+
             DirectionalBusiness <==> PrismaEngine
         end
 
@@ -54,9 +53,9 @@ flowchart TD
 
 ### Layer Responsibilities
 
-* **Express Middleware Chain:** Handles session extraction, verifies that the user belongs to the requested workspace (binding `req.tenantId` and `req.userRole`), and catches global exception. 
-* **Controller Layer:** Executes structural validation via *Zod*, transforms raw parameters into type-safe DTOs, and sets HTTP status responses.
-* **Pragmatic Use Case Layer:** Executes core domain logic and runs direct *Prisma Client* queries.
+- **Express Middleware Chain:** Handles session extraction, verifies that the user belongs to the requested workspace (binding `req.tenantId` and `req.userRole`), and catches global exception.
+- **Controller Layer:** Executes structural validation via _Zod_, transforms raw parameters into type-safe DTOs, and sets HTTP status responses.
+- **Pragmatic Use Case Layer:** Executes core domain logic and runs direct _Prisma Client_ queries.
 
 ## Directory and File System Organization
 
@@ -87,7 +86,7 @@ apps/api/
 │   └── seed.ts
 ├── src/
 │   ├── config/
-│   │   └── env.ts                  # Runtine environment parsing via Zod
+│   │   └── env.ts                  # Runtime environment parsing via Zod
 │   ├── middleware/
 │   │   ├── auth.middleware.ts
 │   │   ├── tenant.middleware.ts    # Validates membership and binds data
@@ -118,7 +117,7 @@ apps/api/
 
 ## Multi-Tenancy & Data Isolation
 
-Data isolation is enforced via **User-First Global Authentication and Workspace Context Verification**. 
+Data isolation is enforced via **User-First Global Authentication and Workspace Context Verification**.
 
 ### Tenant Verification Flow
 

@@ -27,7 +27,7 @@ Add a `user.is_active` field and implement a propagation workflow throughout ten
 
 ### Goal
 
-Allow platform administrators or automated billing systems to temporaly suspend tenant workspace access without destroying underlying data.
+Allow platform administrators or automated billing systems to temporarily suspend tenant workspace access without destroying underlying data.
 
 ### Proposed Approach
 
