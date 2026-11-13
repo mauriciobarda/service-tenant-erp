@@ -294,7 +294,7 @@ Temporal junction table linking users to tasks. Operates on an append-only patte
 | `assigned_at` | `TIMESTAMPTZ` | `NOT NULL`, `DEFAULT NOW()` | Timestamp when the assignment was created. |
 | `unassigned_at` | `TIMESTAMPTZ` | `NULLABLE` | Timestamp when the user was unassigned (NULL means currently assigned). |
 
-> **Composite Constraint:** `CREATE UNIQUE INDEX idx_task_assignment_unique_active_per_member_task ON task_assignments (organization_id, task_id, membership_id) WHERE unassigned_at IS NULL` guarantees that each user can have one active assignment per task at any given time.
+> **Composite Constraint:** `CREATE UNIQUE INDEX "uq_task_assignments_active_member_task" ON task_assignments (organization_id, task_id, membership_id) WHERE unassigned_at IS NULL` guarantees that each user can have one active assignment per task at any given time.
 
 > **Immutability Constraint:** Once an assignment is closed (`unassigned_at` is set) the record becomes read-only. Reassigning a user later requires creating a new assignment record.
 
