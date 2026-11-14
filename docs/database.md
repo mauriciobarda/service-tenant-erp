@@ -330,13 +330,11 @@ Financial charge generated for client billing. Can be split across multiple invo
 | `created_at`           | `TIMESTAMPTZ`      | `NOT NULL`, `DEFAULT NOW()`                                                                                                                 | Creation audit timestamp.                                                                                                       |
 | `updated_at`           | `TIMESTAMPTZ`      | `NOT NULL`                                                                                                                                  | Modification audit timestamp, maintained by the application on each update.                                                     |
 
-> **Check Constraint:** `CHECK (task_id IS NULL OR expense_id IS NULL)` enforces that a billable item originates from only one source type (task, expense or direct charge).
+> **Data Coherence Constraint:** `CHECK ((type = 'task' AND task_id IS NOT NULL AND expense_id IS NULL) OR (type = 'expense' AND task_id IS NULL AND expense_id IS NOT NULL) OR (type = 'direct' AND task_id IS NULL AND expense_id IS NULL))` enforces that the `type` field is consistent with the source reference columns.
 
 > **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_task ON billable_items (task_id) WHERE is_written_off = FALSE AND task_id IS NOT NULL` ensures a task can only have one active non-written-off billable item at a time.
 
 > **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_expense ON billable_items (expense_id) WHERE is_written_off = FALSE AND expense_id IS NOT NULL` ensures an expense can only have one active non-written-off billable item at a time.
-
-> **Data Coherence Constraint:** `CHECK ((type = 'task' AND task_id IS NOT NULL AND expense_id IS NULL) OR (type = 'expense' AND task_id IS NULL AND expense_id IS NOT NULL) OR (type = 'direct' AND task_id IS NULL AND expense_id IS NULL))` enforces that the `type` field is consistent with the source reference columns.
 
 ### 10. `invoices`
 
