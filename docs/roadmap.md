@@ -24,5 +24,5 @@ _Goal: Create a runnable local environment with isolated database containers and
 
 - [x] Set up global and API container-level configurations for Prettier, ESLint and Typescript
 - [x] Write `compose.yaml` for local PostgreSQL containerization
-- [] Initialize Prisma ORM, map out ERD constraints, and execute the initial migration
+- [x] Initialize Prisma ORM, map out ERD constraints, and execute the initial migration
 - [] Build automated database seed scripts using Prisma Client to hydrate mock tenant data

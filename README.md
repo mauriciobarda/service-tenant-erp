@@ -40,7 +40,7 @@ A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-
 
 4. **Execute database migrations natively:**
    ```bash
-   pnpm --filter .../api exec prisma migrate dev
+   pnpm --filter @service-tenant-erp/api exec prisma migrate dev
    ```
 
 ## System Architecture and Documentation
