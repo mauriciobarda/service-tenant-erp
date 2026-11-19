@@ -22,7 +22,7 @@ This document specifies the physical data relationships and core implementation 
 
 - **Decoupled Pricing:** Billable Items stores an independent mutable pricing. Future modifications to the source task or expense do not mutate existing generated Items.
 
-- **Immutable Portions:** Once created, a billable portion allocated amount is frozen. This enables safe, dynamic recalculation of remaining unbilled balances. Portions can only be deleted when the invoice container status is `draft`.
+- **Portions Lifecycle and Immutability:** Portion may only be created or deleted while their associated invoice is in `draft`. Portion records cannot be updated. This enables safe, dynamic recalculation of remaining unbilled balances.
 
 ### Project State Management
 
@@ -174,14 +174,14 @@ _Note: All schema tables must implement the **Database-Level Isolation Boundarie
 
 Global user profile.
 
-| Column          | PostgreSQL Type | Constraints                                                                                      | Description                                                                                                       |
-| :-------------- | :-------------- | :----------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
-| `id`            | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                       | Unique user identifier.                                                                                           |
-| `email`         | `CITEXT`        | `NOT NULL`, `UNIQUE`, `CHECK (email ~* '^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$')` | Primary login identifier. Formatted natively as a case-insensitive string with structural regex email validation. |
-| `name`          | `VARCHAR(150)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                                                     | Full display name. Prevents empty or whitespace-only names.                                                       |
-| `password_hash` | `TEXT`          | `NOT NULL`                                                                                       | Hashed credential.                                                                                                |
-| `created_at`    | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                      | Creation audit timestamp.                                                                                         |
-| `updated_at`    | `TIMESTAMPTZ`   | `NOT NULL`                                                                                       | Modification audit timestamp, maintained by the application on each update.                                       |
+| Column          | PostgreSQL Type | Constraints                                                          | Description                                                                                                       |
+| :-------------- | :-------------- | :------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| `id`            | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                           | Unique user identifier.                                                                                           |
+| `email`         | `CITEXT`        | `NOT NULL`, `UNIQUE`, `CHECK (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$)` | Primary login identifier. Formatted natively as a case-insensitive string with structural regex email validation. |
+| `name`          | `VARCHAR(150)`  | `NOT NULL`, `CHECK(LENGTH(TRIM(name)) >= 2)`                         | Full display name. Prevents empty or whitespace-only names.                                                       |
+| `password_hash` | `TEXT`          | `NOT NULL`                                                           | Hashed credential.                                                                                                |
+| `created_at`    | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                          | Creation audit timestamp.                                                                                         |
+| `updated_at`    | `TIMESTAMPTZ`   | `NOT NULL`                                                           | Modification audit timestamp, maintained by the application on each update.                                       |
 
 ### 2. `organizations`
 
@@ -281,7 +281,7 @@ Work unit, may convert to billable items.
 
 ### 7. `task_assignments`
 
-Temporal junction table linking users to tasks. Operates on an append-only pattern: assignment records are never updated or mutated after creation; except for closing via setting its unassigned_at field.
+Temporal junction table linking users to tasks. Operates on an append-only pattern: assignment records are never updated or mutated after creation, except for closing via setting its unassigned_at field from NULL to a timestamp.
 
 | Column            | PostgreSQL Type | Constraints                                                                                                                            | Description                              |
 | :---------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------- |
@@ -296,7 +296,7 @@ Temporal junction table linking users to tasks. Operates on an append-only patte
 
 > **Composite Constraint:** `CREATE UNIQUE INDEX "uq_task_assignments_active_member_task" ON task_assignments (organization_id, task_id, membership_id) WHERE unassigned_at IS NULL` guarantees that each user can have one active assignment per task at any given time.
 
-> **Immutability Constraint:** Once an assignment is closed (`unassigned_at` is set) the record becomes read-only. Reassigning a user later requires creating a new assignment record.
+> **Immutability Constraint:** Assignment rows cannot be mutated after creation except to close an active assignment (set `unassigned_at` from NULL to a timestamp). Once closed, the record becomes read-only. Reassigning a user to that task requires creating a new assignment record.
 
 ### 8. `expenses`
 
@@ -332,9 +332,9 @@ Financial charge generated for client billing. Can be split across multiple invo
 
 > **Data Coherence Constraint:** `CHECK ((type = 'task' AND task_id IS NOT NULL AND expense_id IS NULL) OR (type = 'expense' AND task_id IS NULL AND expense_id IS NOT NULL) OR (type = 'direct' AND task_id IS NULL AND expense_id IS NULL))` enforces that the `type` field is consistent with the source reference columns.
 
-> **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_task ON billable_items (task_id) WHERE is_written_off = FALSE AND task_id IS NOT NULL` ensures a task can only have one active non-written-off billable item at a time.
+> **Partial Unique Index:** `CREATE UNIQUE INDEX uq_billable_items_active_task ON billable_items (organization_id, task_id) WHERE is_written_off = FALSE AND task_id IS NOT NULL` ensures a task can only have one active non-written-off billable item at a time.
 
-> **Partial Unique Index:** `CREATE UNIQUE INDEX indx_billable_items_unique_active_expense ON billable_items (expense_id) WHERE is_written_off = FALSE AND expense_id IS NOT NULL` ensures an expense can only have one active non-written-off billable item at a time.
+> **Partial Unique Index:** `CREATE UNIQUE INDEX uq_billable_items_active_expense ON billable_items (organization_id, expense_id) WHERE is_written_off = FALSE AND expense_id IS NOT NULL` ensures an expense can only have one active non-written-off billable item at a time.
 
 ### 10. `invoices`
 
@@ -360,22 +360,21 @@ Formal billing document issued to customers.
 
 - `status = 'draft'` &rarr; `issued_at IS NULL AND paid_at IS NULL`
 - `status = 'sent'` &rarr; `issued_at IS NOT NULL AND paid_at IS NULL`
-- `status = 'paid'` &rarr; `issued_at IS NOT NULL AND paid_at IS NOT NULL`
 - `status = 'void'` &rarr; `issued_at IS NOT NULL AND paid_at IS NULL`
+- `status = 'paid'` &rarr; `issued_at IS NOT NULL AND paid_at IS NOT NULL`
 
 ### 11. `billable_item_portions`
 
 Line-item splits for billing. Links a specific dollar amount of a billable item to a specific invoice.
 
-| Column             | PostgreSQL Type | Constraints                                                                                                                     | Description                                                                 |
-| :----------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| `id`               | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                      | Unique portion identifier.                                                  |
-| `organization_id`  | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                   | Tenant ownership key.                                                       |
-| `billable_item_id` | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, billable_item_id) REFERENCES billable_items(organization_id, id) ON DELETE RESTRICT` | Parent billable item.                                                       |
-| `invoice_id`       | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, invoice_id) REFERENCES invoices(organization_id, id) ON DELETE RESTRICT`             | Target invoice record.                                                      |
-| `amount_in_cents`  | `BIGINT`        | `NOT NULL`, `CHECK(amount_in_cents > 0)`                                                                                        | Exact amount allocated to the target invoice.                               |
-| `created_at`       | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                     | Creation audit timestamp.                                                   |
-| `updated_at`       | `TIMESTAMPTZ`   | `NOT NULL`                                                                                                                      | Modification audit timestamp, maintained by the application on each update. |
+| Column             | PostgreSQL Type | Constraints                                                                                                                     | Description                                   |
+| :----------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
+| `id`               | `UUID`          | `PRIMARY KEY`, `DEFAULT gen_random_uuid()`                                                                                      | Unique portion identifier.                    |
+| `organization_id`  | `UUID`          | `NOT NULL`, `REFERENCES organizations(id) ON DELETE RESTRICT`                                                                   | Tenant ownership key.                         |
+| `billable_item_id` | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, billable_item_id) REFERENCES billable_items(organization_id, id) ON DELETE RESTRICT` | Parent billable item.                         |
+| `invoice_id`       | `UUID`          | `NOT NULL`, `FOREIGN KEY (organization_id, invoice_id) REFERENCES invoices(organization_id, id) ON DELETE RESTRICT`             | Target invoice record.                        |
+| `amount_in_cents`  | `BIGINT`        | `NOT NULL`, `CHECK(amount_in_cents > 0)`                                                                                        | Exact amount allocated to the target invoice. |
+| `created_at`       | `TIMESTAMPTZ`   | `NOT NULL`, `DEFAULT NOW()`                                                                                                     | Creation audit timestamp.                     |
 
 > **Business Invariant (Use Case Layer/Trigger):** `SUM(amount_in_cents)` across all active (non-void invoice) portions belonging to a single `billable_item_id` must not exceed `billable_items.total_value_in_cents`.
 

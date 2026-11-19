@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [Citext]
+  extensions = [citext]
 }
 
 enum MembershipRole {
@@ -292,7 +292,6 @@ model BillableItemPortion {
   invoiceId      String   @map("invoice_id") @db.Uuid
   amountInCents  BigInt   @map("amount_in_cents")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   billableItem BillableItem @relation(fields: [organizationId, billableItemId], references: [organizationId, id], onDelete: Restrict)
