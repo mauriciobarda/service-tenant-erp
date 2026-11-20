@@ -38,7 +38,7 @@ A multi-tenant Enterprise Resource Planning (ERP) platform designed for service-
    docker compose up -d
    ```
 
-4. **Execute database migrations natively:**
+4. **Apply migrations to your local development database:**
    ```bash
    pnpm --filter @service-tenant-erp/api exec prisma migrate dev
    ```
